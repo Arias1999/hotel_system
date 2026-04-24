@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="this.style.display='none'" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.88);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out;">
+    <img id="lightbox-img" src="" style="max-width:90%;max-height:90vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+</div>
+
+<div class="room-detail" style="margin-bottom: 32px;">
+    {% if room["image"] %}
+        <div class="room-detail-img">
+            <img src="{{ room['image'] }}" alt="{{ room['name'] }}" onclick="openLightbox(this.src)" style="cursor:zoom-in;">
+            <span class="badge">Available</span>
+            <span class="zoom-hint">🔍 Click to zoom</span>
+        </div>
+    {% endif %}
+    <div class="room-detail-body">
+        <h2>{{ room["name"] }}</h2>
+        <p class="price">₱{{ "{:,.0f}".format(room["price"]) }} <span>/ night</span></p>
+        <p class="room-detail-desc">{{ room["description"] }}</p>
+    </div>
+</div>
+
+<div class="form-page">
+    <h2>Book This Room</h2>
+    <form method="POST">
+        <label>Check-in Date</label>
+        <input type="date" name="checkin" required>
+
+        <label>Check-out Date</label>
+        <input type="date" name="checkout" required>
+
+        <button class="btn btn-full" type="submit">Confirm Booking</button>
+        <a href="/room/{{ room['id'] }}" class="btn btn-outline btn-full">Cancel</a>
+    </form>
+</div>
+
+<script>
+    function openLightbox(src) {
+        const lb = document.getElementById('lightbox');
+        document.getElementById('lightbox-img').src = src;
+        lb.style.display = 'flex';
+    }
+</script>
+
+{% endblock %}

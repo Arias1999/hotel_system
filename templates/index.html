@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="hero">
+    <h1>Welcome back, {{ session["user"] }} 👋</h1>
+    <p>Find and book your perfect room with ease.</p>
+    <a href="/rooms" class="btn">Browse Rooms</a>
+    <a href="/my-bookings" class="btn btn-outline">My Bookings</a>
+</div>
+
+<div class="categories-section">
+    <h2>Browse by Category</h2>
+    <div class="category-grid">
+        <a href="{{ url_for('rooms', category='Standard') }}" class="category-card">
+            <span class="cat-icon">🛏</span>
+            <span class="cat-name">Standard</span>
+            <span class="cat-desc">Comfortable & affordable</span>
+        </a>
+        <a href="{{ url_for('rooms', category='Suite') }}" class="category-card">
+            <span class="cat-icon">🌊</span>
+            <span class="cat-name">Suite</span>
+            <span class="cat-desc">Spacious & premium</span>
+        </a>
+        <a href="{{ url_for('rooms', category='Luxury') }}" class="category-card">
+            <span class="cat-icon">✨</span>
+            <span class="cat-name">Luxury</span>
+            <span class="cat-desc">Top-tier experience</span>
+        </a>
+        <a href="{{ url_for('rooms', category='Family') }}" class="category-card">
+            <span class="cat-icon">👨‍👩‍👧</span>
+            <span class="cat-name">Family</span>
+            <span class="cat-desc">Perfect for families</span>
+        </a>
+    </div>
+</div>
+
+{% endblock %}

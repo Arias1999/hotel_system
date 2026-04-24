@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>My Bookings</h2>
+
+{% if bookings %}
+<div class="grid">
+    {% for b in bookings %}
+    <div class="card">
+        <div class="card-body">
+            <h3>{{ b["name"] }}</h3>
+            <p class="price">₱{{ b["price"] }} <span>/ night</span></p>
+            <p>📅 Check-in: <strong>{{ b["checkin"] }}</strong></p>
+            <p>📅 Check-out: <strong>{{ b["checkout"] }}</strong></p>
+            <form method="POST" action="/cancel/{{ b['id'] }}" onsubmit="return confirm('Cancel this booking?')">
+                <button class="btn btn-danger btn-full" type="submit">Cancel Booking</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <p>You have no bookings yet.</p>
+    <a href="/rooms" class="btn">Browse Rooms</a>
+</div>
+{% endif %}
+
+{% endblock %}

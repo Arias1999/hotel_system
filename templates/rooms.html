@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="rooms-header">
+    <h2>Available Rooms</h2>
+    <p>Choose from our {{ rooms|length }} carefully curated rooms</p>
+</div>
+
+<div class="filter-bar">
+    <a href="/rooms" class="filter-btn {% if active_category == 'All' %}active{% endif %}">All</a>
+    {% for cat in categories %}
+    <a href="/rooms?category={{ cat }}" class="filter-btn {% if active_category == cat %}active{% endif %}">{{ cat }}</a>
+    {% endfor %}
+</div>
+
+<div class="grid">
+    {% for room in rooms %}
+    <div class="card">
+        {% if room["image"] %}
+            <div class="card-img-wrap">
+                <img src="{{ room['image'] }}" alt="{{ room['name'] }}">
+                <span class="badge">Available</span>
+            </div>
+        {% else %}
+            <div class="no-image">🛏 No Image</div>
+        {% endif %}
+        <div class="card-body">
+            <h3>{{ room["name"] }}</h3>
+            <p class="price">₱{{ "{:,.0f}".format(room["price"]) }} <span>/ night</span></p>
+            <p class="desc">{{ room["description"] }}</p>
+            <a href="/book/{{ room['id'] }}" class="btn btn-full">Book Now</a>
+        </div>
+    </div>
+    {% else %}
+    <p>No rooms available at the moment.</p>
+    {% endfor %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HotelBook – Luxury Stays</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .landing-hero {
+            background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
+                        url('https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=1400') center/cover no-repeat;
+            min-height: 520px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 60px 20px;
+            color: #fff;
+        }
+        .landing-hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            font-weight: 700;
+            color: #c9a84c;
+            margin-bottom: 14px;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+        }
+        .landing-hero p {
+            font-size: 18px;
+            margin-bottom: 36px;
+            color: #d8c8a8;
+            letter-spacing: 0.5px;
+        }
+        .landing-hero .btn { margin: 6px; padding: 13px 32px; font-size: 15px; }
+        .landing-hero .btn-outline { border-color: #c9a84c; color: #c9a84c; }
+        .landing-hero .btn-outline:hover { background: #c9a84c; color: #0d0d0d; }
+        .landing-body {
+            max-width: 1000px;
+            margin: 52px auto;
+            padding: 0 24px;
+        }
+        .featured-section { margin-top: 52px; }
+        .featured-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        .featured-card {
+            position: relative;
+            border-radius: 14px;
+            overflow: hidden;
+            text-decoration: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .featured-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 36px rgba(201,168,76,0.2);
+        }
+        .featured-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+            filter: brightness(0.75);
+            transition: filter 0.2s;
+        }
+        .featured-card:hover img { filter: brightness(0.9); }
+        .featured-card {
+            background: #252538;
+            border: 1px solid #35354a;
+        }
+        .featured-info {
+            padding: 14px 16px;
+            background: #252538;
+        }
+        .featured-name {
+            font-family: 'Playfair Display', serif;
+            color: #e8e0d0;
+            font-size: 16px;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .featured-price {
+            color: #c9a84c;
+            font-size: 13px;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .featured-desc {
+            color: #7a6a5a;
+            font-size: 12px;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .about-section {
+            margin-top: 64px;
+            display: flex;
+            gap: 40px;
+            align-items: center;
+            background: #252538;
+            border-radius: 16px;
+            padding: 40px;
+            border: 1px solid #35354a;
+        }
+        .about-section img {
+            width: 380px;
+            height: 260px;
+            object-fit: cover;
+            border-radius: 12px;
+            flex-shrink: 0;
+        }
+        .about-text h2 { margin-bottom: 14px; }
+        .about-text p { color: #9a8a7a; font-size: 15px; line-height: 1.8; margin-bottom: 10px; }
+        .contact-section {
+            margin-top: 64px;
+        }
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 24px;
+        }
+        .contact-card {
+            background: #252538;
+            border-radius: 14px;
+            padding: 28px 20px;
+            text-align: center;
+            border: 1px solid #35354a;
+        }
+        .contact-icon { font-size: 32px; margin-bottom: 12px; }
+        .contact-label { font-size: 13px; color: #7a6a5a; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+        .contact-value { color: #e8e0d0; font-size: 15px; font-weight: 500; }
+    </style>
+</head>
+<body>
+    <nav>
+        <span class="brand">🏨 HotelBook</span>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/about">About</a>
+            <a href="/contact">Contact</a>
+            <a href="/login">Login</a>
+            <a href="/signup">Sign Up</a>
+        </div>
+    </nav>
+
+    <div class="landing-hero">
+        <h1>Experience True Luxury</h1>
+        <p>Exclusive rooms crafted for the discerning traveller.</p>
+        <div>
+            <a href="/signup" class="btn">Reserve Now</a>
+            <a href="/login" class="btn btn-outline">Login</a>
+        </div>
+    </div>
+
+    <div class="landing-body">
+        <div class="categories-section">
+            <h2>Browse by Category</h2>
+            <div class="category-grid">
+                <a href="/signup" class="category-card">
+                    <span class="cat-icon">🛏</span>
+                    <span class="cat-name">Standard</span>
+                    <span class="cat-desc">Comfortable & affordable</span>
+                </a>
+                <a href="/signup" class="category-card">
+                    <span class="cat-icon">🌊</span>
+                    <span class="cat-name">Suite</span>
+                    <span class="cat-desc">Spacious & premium</span>
+                </a>
+                <a href="/signup" class="category-card">
+                    <span class="cat-icon">✨</span>
+                    <span class="cat-name">Luxury</span>
+                    <span class="cat-desc">Top-tier experience</span>
+                </a>
+                <a href="/signup" class="category-card">
+                    <span class="cat-icon">👨‍👩‍👧</span>
+                    <span class="cat-name">Family</span>
+                    <span class="cat-desc">Perfect for families</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="featured-section">
+            <h2>Featured Rooms</h2>
+            <div class="featured-grid">
+                <a href="/room/1" class="featured-card">
+                    <img src="https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=600" alt="Deluxe Room">
+                    <div class="featured-info">
+                        <span class="featured-name">Deluxe Room</span>
+                        <span class="featured-price">₱2,500 / night</span>
+                        <span class="featured-desc">Spacious room with city view and a king-size bed.</span>
+                    </div>
+                </a>
+                <a href="/room/3" class="featured-card">
+                    <img src="https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=600" alt="Ocean Suite">
+                    <div class="featured-info">
+                        <span class="featured-name">Ocean Suite</span>
+                        <span class="featured-price">₱5,000 / night</span>
+                        <span class="featured-desc">Luxury suite with a private balcony and ocean view.</span>
+                    </div>
+                </a>
+                <a href="/room/7" class="featured-card">
+                    <img src="https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=600" alt="Honeymoon Suite">
+                    <div class="featured-info">
+                        <span class="featured-name">Honeymoon Suite</span>
+                        <span class="featured-price">₱6,500 / night</span>
+                        <span class="featured-desc">Romantic suite with jacuzzi and rose petal decor.</span>
+                    </div>
+                </a>
+                <a href="/room/10" class="featured-card">
+                    <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=600" alt="Penthouse">
+                    <div class="featured-info">
+                        <span class="featured-name">Penthouse</span>
+                        <span class="featured-price">₱12,000 / night</span>
+                        <span class="featured-desc">Exclusive penthouse with private pool and rooftop terrace.</span>
+                    </div>
+                </a>
+                <a href="/room/4" class="featured-card">
+                    <img src="https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=600" alt="Family Room">
+                    <div class="featured-info">
+                        <span class="featured-name">Family Room</span>
+                        <span class="featured-price">₱3,500 / night</span>
+                        <span class="featured-desc">Large room with two beds, perfect for families.</span>
+                    </div>
+                </a>
+                <a href="/room/5" class="featured-card">
+                    <img src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600" alt="Presidential Suite">
+                    <div class="featured-info">
+                        <span class="featured-name">Presidential Suite</span>
+                        <span class="featured-price">₱9,500 / night</span>
+                        <span class="featured-desc">Top-floor suite with panoramic views and butler service.</span>
+                    </div>
+                </a>
+                <a href="/room/2" class="featured-card">
+                    <img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600" alt="Standard Room">
+                    <div class="featured-info">
+                        <span class="featured-name">Standard Room</span>
+                        <span class="featured-price">₱1,500 / night</span>
+                        <span class="featured-desc">Comfortable room with all essential amenities.</span>
+                    </div>
+                </a>
+                <a href="/room/6" class="featured-card">
+                    <img src="https://images.unsplash.com/photo-1595576508898-0ad5c879a061?w=600" alt="Twin Room">
+                    <div class="featured-info">
+                        <span class="featured-name">Twin Room</span>
+                        <span class="featured-price">₱1,800 / night</span>
+                        <span class="featured-desc">Two single beds ideal for friends or colleagues.</span>
+                    </div>
+                </a>
+                <a href="/room/8" class="featured-card">
+                    <img src="https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?w=600" alt="Garden View Room">
+                    <div class="featured-info">
+                        <span class="featured-name">Garden View Room</span>
+                        <span class="featured-price">₱2,000 / night</span>
+                        <span class="featured-desc">Peaceful room overlooking the hotel garden.</span>
+                    </div>
+                </a>
+                <a href="/room/9" class="featured-card">
+                    <img src="https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600" alt="Business Room">
+                    <div class="featured-info">
+                        <span class="featured-name">Business Room</span>
+                        <span class="featured-price">₱2,200 / night</span>
+                        <span class="featured-desc">Equipped with work desk, fast Wi-Fi and city view.</span>
+                    </div>
+                </a>
+                <a href="/room/11" class="featured-card">
+                    <img src="https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=600" alt="Skyline Room">
+                    <div class="featured-info">
+                        <span class="featured-name">Skyline Room</span>
+                        <span class="featured-price">₱2,800 / night</span>
+                        <span class="featured-desc">Modern room with stunning skyline views and smart TV.</span>
+                    </div>
+                </a>
+                <a href="/room/12" class="featured-card">
+                    <img src="https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=600" alt="Royal Suite">
+                    <div class="featured-info">
+                        <span class="featured-name">Royal Suite</span>
+                        <span class="featured-price">₱8,000 / night</span>
+                        <span class="featured-desc">Opulent suite with antique furnishings and butler service.</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>© 2025 HotelBook. All rights reserved.</p>
+        <div class="footer-links">
+            <a href="/login">Login</a>
+            <a href="/signup">Sign Up</a>
+        </div>
+    </footer>
+</body>
+</html>
