@@ -4,7 +4,11 @@ import hashlib
 import os
 
 app = Flask(__name__)
-app.secret_key = "secret123"
+app.secret_key = os.environ.get("SECRET_KEY", "secret123")
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+)
 DB = "hotel.db"
 
 
@@ -68,6 +72,10 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 
+def valid_email(email):
+    return "@" in email and "." in email and len(email) >= 5
+
+
 def logged_in():
     return "user" in session
 
@@ -101,19 +109,31 @@ def login():
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
+    email = ""
     if request.method == "POST":
-        email = request.form["email"]
-        password = hash_password(request.form["password"])
-        try:
-            with get_db() as conn:
-                conn.execute(
-                    "INSERT INTO users (email, password) VALUES (?, ?)", (email, password)
-                )
-            flash("Account created! Please log in.", "success")
-            return redirect("/")
-        except sqlite3.IntegrityError:
-            flash("Email already registered.", "error")
-    return render_template("signup.html")
+        email = request.form["email"].strip()
+        password = request.form["password"]
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not valid_email(email):
+            flash("Please provide a valid email address.", "error")
+        elif len(password) < 6:
+            flash("Password must be at least 6 characters long.", "error")
+        elif password != confirm_password:
+            flash("Passwords do not match.", "error")
+        else:
+            hashed_password = hash_password(password)
+            try:
+                with get_db() as conn:
+                    conn.execute(
+                        "INSERT INTO users (email, password) VALUES (?, ?)", (email, hashed_password)
+                    )
+                flash("Account created! Please log in.", "success")
+                return redirect("/")
+            except sqlite3.IntegrityError:
+                flash("Email already registered.", "error")
+
+    return render_template("signup.html", email=email)
 
 
 @app.route("/logout")
@@ -177,20 +197,39 @@ def book(room_id):
     if not room:
         flash("Room not found.", "error")
         return redirect("/rooms")
+
+    checkin = ""
+    checkout = ""
     if request.method == "POST":
-        checkin = request.form["checkin"]
-        checkout = request.form["checkout"]
+        checkin = request.form.get("checkin", "")
+        checkout = request.form.get("checkout", "")
+
+        if not checkin or not checkout:
+            flash("Please select both check-in and check-out dates.", "error")
+            return render_template("booking.html", room=room, checkin=checkin, checkout=checkout)
+
         if checkin >= checkout:
             flash("Check-out date must be after check-in date.", "error")
-            return render_template("booking.html", room=room)
+            return render_template("booking.html", room=room, checkin=checkin, checkout=checkout)
+
         with get_db() as conn:
+            conflict = conn.execute(
+                "SELECT 1 FROM bookings WHERE room_id = ? AND NOT (checkout <= ? OR checkin >= ?)",
+                (room_id, checkin, checkout)
+            ).fetchone()
+            if conflict:
+                flash("This room is already booked for the selected dates. Please choose another date range.", "error")
+                return render_template("booking.html", room=room, checkin=checkin, checkout=checkout)
+
             conn.execute(
                 "INSERT INTO bookings (user_email, room_id, checkin, checkout) VALUES (?, ?, ?, ?)",
                 (session["user"], room_id, checkin, checkout)
             )
+
         flash("Booking confirmed!", "success")
         return redirect("/my-bookings")
-    return render_template("booking.html", room=room)
+
+    return render_template("booking.html", room=room, checkin=checkin, checkout=checkout)
 
 
 @app.route("/my-bookings")

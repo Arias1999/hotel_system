@@ -25,10 +25,10 @@
     <h2>Book This Room</h2>
     <form method="POST">
         <label>Check-in Date</label>
-        <input type="date" name="checkin" required>
+        <input type="date" name="checkin" required value="{{ checkin or '' }}">
 
         <label>Check-out Date</label>
-        <input type="date" name="checkout" required>
+        <input type="date" name="checkout" required value="{{ checkout or '' }}">
 
         <button class="btn btn-full" type="submit">Confirm Booking</button>
         <a href="/room/{{ room['id'] }}" class="btn btn-outline btn-full">Cancel</a>
