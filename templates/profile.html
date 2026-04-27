@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="profile-page">
+    <div class="profile-header-card">
+        <div class="profile-avatar">👤</div>
+        <div class="profile-info">
+            <h2>{{ user_email }}</h2>
+            <p class="profile-status">Active Member</p>
+        </div>
+    </div>
+
+    <div class="profile-grid">
+        <!-- Account Overview -->
+        <div class="profile-card">
+            <div class="card-icon">📋</div>
+            <h3>Account Overview</h3>
+            <p class="card-stat">{{ booking_count }} Active Bookings</p>
+            <a href="/my-bookings" class="btn btn-outline">View Bookings</a>
+        </div>
+
+        <!-- Explore Rooms -->
+        <div class="profile-card">
+            <div class="card-icon">🏨</div>
+            <h3>Browse Rooms</h3>
+            <p class="card-stat">{{ room_count }} Rooms Available</p>
+            <a href="/rooms" class="btn btn-outline">View Rooms</a>
+        </div>
+
+        <!-- Settings -->
+        <div class="profile-card">
+            <div class="card-icon">⚙️</div>
+            <h3>Account Settings</h3>
+            <p class="card-stat">Manage your preferences</p>
+            <a href="/settings" class="btn btn-outline">Go to Settings</a>
+        </div>
+    </div>
+
+    <div class="profile-actions">
+        <a href="/profile" class="btn">Back to Profile</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 # hotel_system
 
-A simple Flask-based hotel booking app with login/signup, room browsing, and booking management.
+A simple Flask-based hotel booking app with login/register, room browsing, and booking management.
 
 ## Setup
 

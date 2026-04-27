@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register – HotelBook</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="auth-page">
+    <div class="auth-box">
+        <div class="auth-brand">
+            <span class="brand-mark">HB</span>
+            <div>
+                <h2>HotelBook</h2>
+                <p>Secure your next stay with confidence.</p>
+            </div>
+        </div>
+
+        <div class="auth-intro">
+            <h3>Create your account</h3>
+            <p>Create your account to explore hotel options with ease.</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-wrapper">
+                    {% for category, msg in messages %}
+                        <div class="flash flash-{{ category }}">{{ msg }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="auth-form">
+            <label>
+                Full Name
+                <input type="text" name="fullname" placeholder="Enter your full name" required>
+            </label>
+            <label>
+                Email address
+                <input type="email" name="email" placeholder="you@example.com" required>
+            </label>
+            <label>
+                Phone Number
+                <input type="tel" name="phone" placeholder="09XXXXXXXXX" required>
+            </label>
+            <label>
+                Location
+                <input type="text" name="location" placeholder="City, Province" required>
+            </label>
+            <label>
+                Password (min. 6)
+                <input type="password" name="password" placeholder="Minimum 6 characters" required>
+            </label>
+            <label>
+                Confirm password
+                <input type="password" name="confirm_password" placeholder="Re-enter your password" required>
+            </label>
+            <button class="btn btn-full" type="submit">Register</button>
+        </form>
+
+        <p class="auth-link">Already have an account? <a href="/login">Login</a></p>
+    </div>
+</body>
+</html>

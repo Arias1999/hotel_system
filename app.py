@@ -107,8 +107,8 @@ def login():
     return render_template("login.html")
 
 
-@app.route("/signup", methods=["GET", "POST"])
-def signup():
+@app.route("/register", methods=["GET", "POST"])
+def register():
     email = ""
     if request.method == "POST":
         email = request.form["email"].strip()
@@ -132,8 +132,9 @@ def signup():
                 return redirect("/")
             except sqlite3.IntegrityError:
                 flash("Email already registered.", "error")
+                return render_template("register.html", email=email)
 
-    return render_template("signup.html", email=email)
+    return render_template("register.html")
 
 
 @app.route("/logout")
@@ -178,7 +179,7 @@ def contact():
 @app.route("/room/<int:room_id>")
 def room_detail(room_id):
     if not logged_in():
-        return redirect("/signup")
+        return redirect("/register")
     with get_db() as conn:
         room = conn.execute("SELECT * FROM rooms WHERE id = ?", (room_id,)).fetchone()
         rooms = conn.execute("SELECT * FROM rooms").fetchall()
@@ -258,6 +259,27 @@ def cancel(booking_id):
         )
     flash("Booking cancelled.", "success")
     return redirect("/my-bookings")
+
+
+@app.route("/settings")
+def settings():
+    if not logged_in():
+        return redirect("/")
+    user_email = session["user"]
+    return render_template("settings.html", user_email=user_email)
+
+
+@app.route("/profile")
+def profile():
+    if not logged_in():
+        return redirect("/")
+    user_email = session["user"]
+    with get_db() as conn:
+        booking_count = conn.execute(
+            "SELECT COUNT(*) FROM bookings WHERE user_email = ?", (user_email,)
+        ).fetchone()[0]
+        room_count = conn.execute("SELECT COUNT(*) FROM rooms").fetchone()[0]
+    return render_template("profile.html", user_email=user_email, booking_count=booking_count, room_count=room_count)
 
 
 if __name__ == "__main__":
