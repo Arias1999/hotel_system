@@ -18,9 +18,15 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="/login">
-            <input type="email" name="email" placeholder="Email address" required>
-            <input type="password" name="password" placeholder="Password" required>
+        <form method="POST" action="/login" class="auth-form">
+            <label>
+                Email address
+                <input type="email" name="email" placeholder="you@example.com" required>
+            </label>
+            <label>
+                Password
+                <input type="password" name="password" placeholder="Password" required>
+            </label>
             <button class="btn btn-full" type="submit">Login</button>
         </form>
         <p class="auth-link">Don't have an account? <a href="/register">Register</a></p>

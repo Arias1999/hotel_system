@@ -23,12 +23,29 @@
 
 <div class="form-page">
     <h2>Book This Room</h2>
+    <div class="payment-method">
+        <button type="button" class="payment-toggle" data-target="booking-payment-details" onclick="togglePaymentDetails(event)">
+            Payment Method
+        </button>
+        <div class="payment-method-details" id="booking-payment-details" style="display:none;">
+            <p>Pay securely at the hotel reception upon arrival. Accepted methods: Cash, GCash, Visa, Mastercard, and PayPal.</p>
+        </div>
+    </div>
     <form method="POST">
         <label>Check-in Date</label>
         <input type="date" name="checkin" required value="{{ checkin or '' }}">
 
         <label>Check-out Date</label>
         <input type="date" name="checkout" required value="{{ checkout or '' }}">
+
+        <label>Payment Method</label>
+        <select name="payment_method">
+            <option value="Cash" {% if payment_method == 'Cash' %}selected{% endif %}>Cash</option>
+            <option value="GCash" {% if payment_method == 'GCash' %}selected{% endif %}>GCash</option>
+            <option value="Visa" {% if payment_method == 'Visa' %}selected{% endif %}>Visa</option>
+            <option value="Mastercard" {% if payment_method == 'Mastercard' %}selected{% endif %}>Mastercard</option>
+            <option value="PayPal" {% if payment_method == 'PayPal' %}selected{% endif %}>PayPal</option>
+        </select>
 
         <button class="btn btn-full" type="submit">Confirm Booking</button>
         <a href="/room/{{ room['id'] }}" class="btn btn-outline btn-full">Cancel</a>
@@ -40,6 +57,12 @@
         const lb = document.getElementById('lightbox');
         document.getElementById('lightbox-img').src = src;
         lb.style.display = 'flex';
+    }
+    function togglePaymentDetails(event) {
+        const targetId = event.currentTarget.dataset.target;
+        const details = document.getElementById(targetId);
+        if (!details) return;
+        details.style.display = details.style.display === 'none' ? 'block' : 'none';
     }
 </script>
 

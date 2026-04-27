@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, session, flash
 import sqlite3
 import hashlib
 import os
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "secret123")
@@ -42,9 +43,14 @@ def init_db():
                 room_id INTEGER NOT NULL,
                 checkin TEXT NOT NULL,
                 checkout TEXT NOT NULL,
+                payment_method TEXT DEFAULT 'Cash',
                 FOREIGN KEY (room_id) REFERENCES rooms(id)
             );
         """)
+
+        columns = [col["name"] for col in conn.execute("PRAGMA table_info(bookings)").fetchall()]
+        if "payment_method" not in columns:
+            conn.execute("ALTER TABLE bookings ADD COLUMN payment_method TEXT DEFAULT 'Cash'")
 
         # Seed rooms if empty
         count = conn.execute("SELECT COUNT(*) FROM rooms").fetchone()[0]
@@ -201,17 +207,35 @@ def book(room_id):
 
     checkin = ""
     checkout = ""
+    payment_method = "Cash"
     if request.method == "POST":
         checkin = request.form.get("checkin", "")
         checkout = request.form.get("checkout", "")
+        payment_method = request.form.get("payment_method", "Cash")
 
         if not checkin or not checkout:
             flash("Please select both check-in and check-out dates.", "error")
-            return render_template("booking.html", room=room, checkin=checkin, checkout=checkout)
+            return render_template(
+                "booking.html",
+                room=room,
+                checkin=checkin,
+                checkout=checkout,
+                payment_method=payment_method,
+            )
 
         if checkin >= checkout:
             flash("Check-out date must be after check-in date.", "error")
-            return render_template("booking.html", room=room, checkin=checkin, checkout=checkout)
+            return render_template(
+                "booking.html",
+                room=room,
+                checkin=checkin,
+                checkout=checkout,
+                payment_method=payment_method,
+            )
+
+        valid_methods = ["Cash", "GCash", "Visa", "Mastercard", "PayPal"]
+        if payment_method not in valid_methods:
+            payment_method = "Cash"
 
         with get_db() as conn:
             conflict = conn.execute(
@@ -220,17 +244,76 @@ def book(room_id):
             ).fetchone()
             if conflict:
                 flash("This room is already booked for the selected dates. Please choose another date range.", "error")
-                return render_template("booking.html", room=room, checkin=checkin, checkout=checkout)
+                return render_template(
+                    "booking.html",
+                    room=room,
+                    checkin=checkin,
+                    checkout=checkout,
+                    payment_method=payment_method,
+                )
 
-            conn.execute(
-                "INSERT INTO bookings (user_email, room_id, checkin, checkout) VALUES (?, ?, ?, ?)",
-                (session["user"], room_id, checkin, checkout)
+            cursor = conn.execute(
+                "INSERT INTO bookings (user_email, room_id, checkin, checkout, payment_method) VALUES (?, ?, ?, ?, ?)",
+                (session["user"], room_id, checkin, checkout, payment_method)
             )
+            booking_id = cursor.lastrowid
 
         flash("Booking confirmed!", "success")
+        return redirect(f"/booking-confirmation/{booking_id}")
+
+    return render_template(
+        "booking.html",
+        room=room,
+        checkin=checkin,
+        checkout=checkout,
+        payment_method=payment_method,
+    )
+
+
+@app.route("/booking-confirmation/<int:booking_id>")
+def booking_confirmation(booking_id):
+    if not logged_in():
+        return redirect("/")
+    with get_db() as conn:
+        booking = conn.execute(
+            """
+            SELECT bookings.id, bookings.checkin, bookings.checkout, bookings.user_email, bookings.payment_method,
+                   rooms.name AS room_name, rooms.price AS room_price
+            FROM bookings
+            JOIN rooms ON bookings.room_id = rooms.id
+            WHERE bookings.id = ? AND bookings.user_email = ?
+            """,
+            (booking_id, session["user"])
+        ).fetchone()
+
+    if not booking:
+        flash("Booking not found.", "error")
         return redirect("/my-bookings")
 
-    return render_template("booking.html", room=room, checkin=checkin, checkout=checkout)
+    nights = 0
+    total = 0
+    try:
+        checkin_date = datetime.fromisoformat(booking["checkin"])
+        checkout_date = datetime.fromisoformat(booking["checkout"])
+        nights = max((checkout_date - checkin_date).days, 0)
+        total = booking["room_price"] * nights
+    except Exception:
+        pass
+
+    return render_template(
+        "booking_confirmation.html",
+        booking={
+            "id": booking["id"],
+            "room_name": booking["room_name"],
+            "room_price": booking["room_price"],
+            "checkin": booking["checkin"],
+            "checkout": booking["checkout"],
+            "user_email": booking["user_email"],
+            "payment_method": booking["payment_method"],
+            "nights": nights,
+            "total": total,
+        }
+    )
 
 
 @app.route("/my-bookings")
@@ -238,13 +321,37 @@ def my_bookings():
     if not logged_in():
         return redirect("/")
     with get_db() as conn:
-        bookings = conn.execute("""
-            SELECT bookings.id, rooms.name, rooms.price, bookings.checkin, bookings.checkout
+        rows = conn.execute("""
+            SELECT bookings.id, rooms.name, rooms.price, bookings.checkin, bookings.checkout, bookings.payment_method
             FROM bookings
             JOIN rooms ON bookings.room_id = rooms.id
             WHERE bookings.user_email = ?
             ORDER BY bookings.checkin DESC
         """, (session["user"],)).fetchall()
+
+    bookings = []
+    for row in rows:
+        nights = 0
+        total = 0
+        try:
+            checkin_date = datetime.fromisoformat(row["checkin"])
+            checkout_date = datetime.fromisoformat(row["checkout"])
+            nights = max((checkout_date - checkin_date).days, 0)
+            total = row["price"] * nights
+        except Exception:
+            pass
+
+        bookings.append({
+            "id": row["id"],
+            "name": row["name"],
+            "price": row["price"],
+            "checkin": row["checkin"],
+            "checkout": row["checkout"],
+            "payment_method": row["payment_method"],
+            "nights": nights,
+            "total": total,
+        })
+
     return render_template("my_bookings.html", bookings=bookings)
 
 

@@ -126,6 +126,71 @@ nav {
     gap: 24px;
 }
 
+.booking-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-top: 22px;
+}
+
+.booking-card {
+    flex: 1 1 320px;
+    max-width: 360px;
+    width: 100%;
+}
+
+.booking-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #c9a84c, #a07830);
+    color: #1e1e2e;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 12px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.page-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    color: #f0e8d8;
+    margin-bottom: 4px;
+}
+
+.subtext {
+    color: #b8aa8f;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.booking-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.booking-id {
+    color: #9a8a7a;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+.booking-details p {
+    margin-bottom: 8px;
+}
+
 .card {
     background: #252538;
     border-radius: 14px;
@@ -273,6 +338,11 @@ nav {
     justify-content: center;
     min-height: 100vh;
     padding: 24px;
+}
+
+.auth-page nav,
+.auth-page footer {
+    display: none;
 }
 
 .auth-box {
@@ -431,6 +501,43 @@ nav {
     font-size: 14px;
 }
 
+.payment-method {
+    position: relative;
+    z-index: 2;
+    margin-bottom: 22px;
+    border: 1px solid rgba(201,168,76,0.24);
+    border-radius: 14px;
+    background: #1f1f33;
+    overflow: hidden;
+}
+
+.payment-toggle {
+    display: block;
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: #f2e7c4;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: left;
+    padding: 18px 18px 14px;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.payment-toggle:hover {
+    color: #c9a84c;
+}
+
+.payment-method-details {
+    padding: 0 18px 20px;
+    color: #d8c8d8;
+    font-size: 14px;
+    line-height: 1.75;
+}
+
 .form-page label {
     display: block;
     font-size: 13px;
@@ -440,7 +547,8 @@ nav {
     letter-spacing: 0.5px;
 }
 
-.form-page input[type="date"] {
+.form-page input[type="date"],
+.form-page select {
     display: block;
     width: 100%;
     padding: 11px 14px;
@@ -452,7 +560,8 @@ nav {
     color: #e8e0d0;
 }
 
-.form-page input[type="date"]:focus {
+.form-page input[type="date"]:focus,
+.form-page select:focus {
     outline: none;
     border-color: #c9a84c;
 }

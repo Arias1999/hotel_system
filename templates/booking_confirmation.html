@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="page-header">
+    <div>
+        <h2>Booking Confirmed</h2>
+        <p class="subtext">Here are your booking details. Thank you for choosing HotelBook.</p>
+    </div>
+</section>
+
+<div class="payment-method">
+    <button type="button" class="payment-toggle" data-target="confirmation-payment-details" onclick="togglePaymentDetails(event)">
+        Payment Method
+    </button>
+    <div class="payment-method-details" id="confirmation-payment-details" style="display:none;">
+        <p>Pay securely at the hotel reception upon arrival. Accepted methods: Cash, GCash, Visa, Mastercard, and PayPal.</p>
+    </div>
+</div>
+
+<div class="booking-card card">
+    <div class="card-body">
+        <div class="booking-header">
+            <div>
+                <h3>{{ booking.room_name }}</h3>
+                <p class="booking-id">Booking #{{ booking.id }}</p>
+            </div>
+            <span class="booking-badge">{{ booking.nights }} night{{ "s" if booking.nights != 1 else "" }}</span>
+        </div>
+
+        <p class="price">₱{{ "%.2f" | format(booking.room_price) }} <span>/ night</span></p>
+
+        <div class="booking-details">
+            <p>👤 Booked by: <strong>{{ booking.user_email }}</strong></p>
+            <p>� Payment method: <strong>{{ booking.payment_method }}</strong></p>
+            <p>�📅 Check-in: <strong>{{ booking.checkin }}</strong></p>
+            <p>📅 Check-out: <strong>{{ booking.checkout }}</strong></p>
+            {% if booking.nights > 0 %}
+            <p>Total stay: <strong>{{ booking.nights }} night{{ "s" if booking.nights != 1 else "" }}</strong></p>
+            <p>Total price: <strong>₱{{ "%.2f" | format(booking.total) }}</strong></p>
+            {% endif %}
+        </div>
+
+        <div class="button-row">
+            <a href="/my-bookings" class="btn btn-full">View All Bookings</a>
+            <a href="/rooms" class="btn btn-outline btn-full">Book Another Room</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function togglePaymentDetails(event) {
+        const targetId = event.currentTarget.dataset.target;
+        const details = document.getElementById(targetId);
+        if (!details) return;
+        details.style.display = details.style.display === 'none' ? 'block' : 'none';
+    }
+</script>
+
+{% endblock %}

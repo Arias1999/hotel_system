@@ -1,17 +1,38 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2>My Bookings</h2>
+<section class="page-header">
+    <div>
+        <h2>My Bookings</h2>
+        <p class="subtext">You have {{ bookings|length }} active booking{{ "s" if bookings|length != 1 else "" }}.</p>
+    </div>
+</section>
 
 {% if bookings %}
-<div class="grid">
+<div class="booking-grid">
     {% for b in bookings %}
-    <div class="card">
+    <div class="booking-card card">
         <div class="card-body">
-            <h3>{{ b["name"] }}</h3>
-            <p class="price">₱{{ b["price"] }} <span>/ night</span></p>
-            <p>📅 Check-in: <strong>{{ b["checkin"] }}</strong></p>
-            <p>📅 Check-out: <strong>{{ b["checkout"] }}</strong></p>
+            <div class="booking-header">
+                <div>
+                    <h3>{{ b["name"] }}</h3>
+                    <p class="booking-id">Booking #{{ b["id"] }}</p>
+                </div>
+                <span class="booking-badge">{{ b["nights"] }} night{{ "s" if b["nights"] != 1 else "" }}</span>
+            </div>
+
+            <p class="price">₱{{ "%.2f" | format(b["price"]) }} <span>/ night</span></p>
+
+            <div class="booking-details">
+                <p>📅 Check-in: <strong>{{ b["checkin"] }}</strong></p>
+                <p>📅 Check-out: <strong>{{ b["checkout"] }}</strong></p>
+                <p>💳 Payment method: <strong>{{ b["payment_method"] or 'Cash' }}</strong></p>
+                {% if b["nights"] > 0 %}
+                <p>Total stay: <strong>{{ b["nights"] }} night{{ "s" if b["nights"] != 1 else "" }}</strong></p>
+                <p>Total price: <strong>₱{{ "%.2f" | format(b["total"]) }}</strong></p>
+                {% endif %}
+            </div>
+
             <form method="POST" action="/cancel/{{ b['id'] }}" onsubmit="return confirm('Cancel this booking?')">
                 <button class="btn btn-danger btn-full" type="submit">Cancel Booking</button>
             </form>
