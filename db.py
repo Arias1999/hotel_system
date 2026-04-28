@@ -10,10 +10,10 @@ def get_pool():
     if _pool is None:
         _pool = pool.SimpleConnectionPool(
             1, 5,
-            host=os.environ.get("DB_HOST", "db.zyjqxnnvnpjbgmnmlxns.supabase.co"),
-            port=int(os.environ.get("DB_PORT", "5432")),
+            host=os.environ.get("DB_HOST", "aws-0-ap-southeast-1.pooler.supabase.com"),
+            port=int(os.environ.get("DB_PORT", "6543")),
             dbname=os.environ.get("DB_NAME", "postgres"),
-            user=os.environ.get("DB_USER", "postgres"),
+            user=os.environ.get("DB_USER", "postgres.zyjqxnnvnpjbgmnmlxns"),
             password=os.environ.get("DB_PASSWORD", ""),
             sslmode="require"
         )
