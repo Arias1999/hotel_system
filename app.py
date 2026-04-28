@@ -43,6 +43,37 @@ def admin_required():
 
 # ── AUTH ──────────────────────────────────────────────
 
+@app.route("/admin/register", methods=["GET", "POST"])
+def admin_register():
+    if admin_logged_in():
+        return redirect("/admin")
+    if request.method == "POST":
+        email = request.form["email"].strip().lower()
+        password = request.form["password"]
+        secret = request.form.get("admin_secret", "")
+        if secret != os.environ.get("ADMIN_SECRET", "admin123"):
+            flash("Invalid admin secret key.", "error")
+        elif not valid_email(email):
+            flash("Invalid email.", "error")
+        elif len(password) < 6:
+            flash("Password must be at least 6 characters.", "error")
+        else:
+            try:
+                existing = db.fetchone("SELECT id FROM public.users WHERE email = %s", (email,))
+                if existing:
+                    db.execute("UPDATE public.users SET is_admin = TRUE, password = %s WHERE email = %s",
+                               (generate_password_hash(password), email))
+                else:
+                    db.execute("INSERT INTO public.users (email, password, is_admin) VALUES (%s, %s, TRUE)",
+                               (email, generate_password_hash(password)))
+                flash("Admin account created! Please log in.", "success")
+                return redirect("/admin/login")
+            except Exception:
+                traceback.print_exc()
+                flash("Registration failed. Please try again.", "error")
+    return render_template("admin_register.html")
+
+
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
     if admin_logged_in():

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Register – HotelBook</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="auth-page">
+    <div class="auth-box">
+        <h2>🛠️ Admin Portal</h2>
+        <h3>Create Admin Account</h3>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, msg in messages %}
+                    <div class="flash flash-{{ category }}">{{ msg }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="auth-form">
+            <label>
+                Email address
+                <input type="email" name="email" placeholder="admin@example.com" required>
+            </label>
+            <label>
+                Password (min. 6)
+                <input type="password" name="password" placeholder="Minimum 6 characters" required>
+            </label>
+            <label>
+                Admin Secret Key
+                <input type="password" name="admin_secret" placeholder="Enter secret key" required>
+            </label>
+            <button class="btn btn-full" type="submit">Create Admin Account</button>
+        </form>
+        <p class="auth-link"><a href="/admin/login">← Back to admin login</a></p>
+    </div>
+</body>
+</html>
