@@ -23,7 +23,10 @@ if not _DATABASE_URL:
     raise RuntimeError("DATABASE_URL environment variable is not set.")
 
 # Append sslmode=require — Supabase rejects unencrypted connections
-_DSN = _DATABASE_URL + ("&" if "?" in _DATABASE_URL else "?") + "sslmode=require"
+# sslmode=require — Supabase rejects unencrypted connections
+# options=-csearch_path=public — forces all unqualified table names to resolve
+# to the public schema, preventing conflicts with Supabase's internal auth.users
+_DSN = _DATABASE_URL + ("&" if "?" in _DATABASE_URL else "?") + "sslmode=require&options=-csearch_path%3Dpublic"
 
 
 @contextmanager

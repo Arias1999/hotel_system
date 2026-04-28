@@ -33,7 +33,7 @@ def logged_in():
 def is_admin():
     if not logged_in():
         return False
-    user = db.fetchone("SELECT is_admin FROM users WHERE email = %s", (session["user"],))
+    user = db.fetchone("SELECT is_admin FROM public.users WHERE email = %s", (session["user"],))
     return user and user["is_admin"]
 
 
@@ -61,7 +61,7 @@ def login():
         email = request.form["email"].strip().lower()
         try:
             # Fetch user by email; check_password_hash verifies the bcrypt hash
-            user = db.fetchone("SELECT * FROM users WHERE email = %s", (email,))
+            user = db.fetchone("SELECT * FROM public.users WHERE email = %s", (email,))
             if user and check_password_hash(user["password"], request.form["password"]):
                 session["user"] = email
                 session["is_admin"] = bool(user["is_admin"])
@@ -91,7 +91,7 @@ def register():
         else:
             try:
                 # ── Duplicate check ───────────────────
-                existing = db.fetchone("SELECT id FROM users WHERE email = %s", (email,))
+                existing = db.fetchone("SELECT id FROM public.users WHERE email = %s", (email,))
                 if existing:
                     flash("Email already registered.", "error")
                     return render_template("register.html", email=email)
@@ -99,7 +99,7 @@ def register():
                 # ── Insert new user ───────────────────
                 # generate_password_hash uses pbkdf2:sha256 by default — never store plain text
                 db.execute(
-                    "INSERT INTO users (email, password) VALUES (%s, %s)",
+                    "INSERT INTO public.users (email, password) VALUES (%s, %s)",
                     (email, generate_password_hash(password))
                 )
                 flash("Account created! Please log in.", "success")
@@ -353,7 +353,7 @@ def admin_dashboard():
     guard = admin_required()
     if guard: return guard
 
-    total_users    = db.fetchone("SELECT COUNT(*) AS c FROM users")["c"]
+    total_users    = db.fetchone("SELECT COUNT(*) AS c FROM public.users")["c"]
     total_rooms    = db.fetchone("SELECT COUNT(*) AS c FROM rooms")["c"]
     total_bookings = db.fetchone("SELECT COUNT(*) AS c FROM bookings")["c"]
     total_revenue  = db.fetchone("SELECT COALESCE(SUM(amount),0) AS c FROM payments WHERE payment_status = 'Paid'")["c"]
@@ -470,12 +470,12 @@ def admin_users():
     guard = admin_required()
     if guard: return guard
     users = db.fetchall("""
-        SELECT users.id, users.email, users.is_admin,
+        SELECT u.id, u.email, u.is_admin,
                COUNT(bookings.id) AS booking_count
-        FROM users
-        LEFT JOIN bookings ON bookings.user_email = users.email
-        GROUP BY users.id, users.email, users.is_admin
-        ORDER BY users.id
+        FROM public.users u
+        LEFT JOIN bookings ON bookings.user_email = u.email
+        GROUP BY u.id, u.email, u.is_admin
+        ORDER BY u.id
     """)
     return render_template("admin_users.html", users=users)
 
@@ -484,7 +484,7 @@ def admin_users():
 def admin_delete_user(user_id):
     guard = admin_required()
     if guard: return guard
-    db.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    db.execute("DELETE FROM public.users WHERE id = %s", (user_id,))
     flash("User deleted.", "success")
     return redirect("/admin/users")
 
