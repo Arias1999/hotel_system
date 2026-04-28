@@ -13,8 +13,8 @@ def get_pool():
             host="aws-0-ap-southeast-1.pooler.supabase.com",
             port=6543,
             dbname="postgres",
-            user=os.environ["DB_USER"],
-            password=os.environ["DB_PASSWORD"],
+            user=os.environ.get("DB_USER", ""),
+            password=os.environ.get("DB_PASSWORD", ""),
             sslmode="require"
         )
     return _pool
