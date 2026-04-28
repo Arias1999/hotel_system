@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request, redirect, session, flash
-import hashlib
 import os
 from datetime import datetime
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash, check_password_hash
 import db
 load_dotenv()
 
@@ -14,10 +14,6 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
 )
-
-
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
 
 
 def valid_email(email):
@@ -56,12 +52,9 @@ def login():
     if logged_in():
         return redirect("/home")
     if request.method == "POST":
-        email = request.form["email"]
-        password = hash_password(request.form["password"])
-        user = db.fetchone(
-            "SELECT * FROM users WHERE email = %s AND password = %s", (email, password)
-        )
-        if user:
+        email = request.form["email"].strip().lower()
+        user = db.fetchone("SELECT * FROM users WHERE email = %s", (email,))
+        if user and check_password_hash(user["password"], request.form["password"]):
             session["user"] = email
             session["is_admin"] = bool(user["is_admin"])
             return redirect("/home")
@@ -69,53 +62,31 @@ def login():
     return render_template("login.html")
 
 
-from werkzeug.security import generate_password_hash
-
 @app.route("/register", methods=["GET", "POST"])
 def register():
     email = ""
-
     if request.method == "POST":
-        try:
-            email = request.form["email"].strip().lower()
-            password = request.form["password"]
-            confirm_password = request.form.get("confirm_password", "")
+        email = request.form["email"].strip().lower()
+        password = request.form["password"]
+        confirm_password = request.form.get("confirm_password", "")
 
-            if not valid_email(email):
-                flash("Please provide a valid email address.", "error")
-
-            elif len(password) < 6:
-                flash("Password must be at least 6 characters long.", "error")
-
-            elif password != confirm_password:
-                flash("Passwords do not match.", "error")
-
-            else:
-                hashed_password = generate_password_hash(password)
-
-                existing = db.fetchone(
-                    "SELECT id FROM users WHERE email = %s",
-                    (email,)
-                )
-
-                if existing:
-                    flash("Email already registered.", "error")
-                    return render_template("register.html", email=email)
-
-                db.execute(
-                    "INSERT INTO users (email, password) VALUES (%s, %s)",
-                    (email, hashed_password)
-                )
-
-                flash("Account created! Please log in.", "success")
-                return redirect("/")
-
-        except Exception as e:
-            import traceback
-            print("REGISTER ERROR:", e)
-            traceback.print_exc()
-            flash(f"Error: {str(e)}", "error")
-
+        if not valid_email(email):
+            flash("Please provide a valid email address.", "error")
+        elif len(password) < 6:
+            flash("Password must be at least 6 characters long.", "error")
+        elif password != confirm_password:
+            flash("Passwords do not match.", "error")
+        else:
+            existing = db.fetchone("SELECT id FROM users WHERE email = %s", (email,))
+            if existing:
+                flash("Email already registered.", "error")
+                return render_template("register.html", email=email)
+            db.execute(
+                "INSERT INTO users (email, password) VALUES (%s, %s)",
+                (email, generate_password_hash(password))
+            )
+            flash("Account created! Please log in.", "success")
+            return redirect("/")
     return render_template("register.html", email=email)
 
 @app.route("/logout")
