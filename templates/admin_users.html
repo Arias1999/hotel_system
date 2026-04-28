@@ -4,12 +4,13 @@
 <div class="admin-header">
     <h2>👥 Manage Users</h2>
     <div class="admin-nav">
-        <a href="/admin" class="admin-nav-btn">Dashboard</a>
-        <a href="/admin/bookings" class="admin-nav-btn">Bookings</a>
-        <a href="/admin/payments" class="admin-nav-btn">Payments</a>
-        <a href="/admin/rooms" class="admin-nav-btn">Rooms</a>
-        <a href="/admin/users" class="admin-nav-btn active">Users</a>
-        <a href="/admin/sql" class="admin-nav-btn">SQL Console</a>
+        <a href="/admin" class="admin-nav-btn"><span class="nav-icon">🏠</span>Dashboard</a>
+        <a href="/admin/bookings" class="admin-nav-btn"><span class="nav-icon">📋</span>Bookings</a>
+        <a href="/admin/payments" class="admin-nav-btn"><span class="nav-icon">💳</span>Payments</a>
+        <a href="/admin/rooms" class="admin-nav-btn"><span class="nav-icon">🛏️</span>Rooms</a>
+        <a href="/admin/users" class="admin-nav-btn active"><span class="nav-icon">👥</span>Users</a>
+        <a href="/admin/sql" class="admin-nav-btn"><span class="nav-icon">🖥️</span>SQL Console</a>
+        <a href="/logout" class="admin-nav-btn admin-nav-logout"><span class="nav-icon">🚪</span>Logout</a>
     </div>
 </div>
 
@@ -30,15 +31,15 @@
                 <td>{{ u.id }}</td>
                 <td>{{ u.email }}</td>
                 <td>
-                    {% if u.is_admin %}
+                    {% if u.role == 'admin' %}
                         <span class="admin-badge">Admin</span>
                     {% else %}
-                        <span class="user-badge">User</span>
+                        <span class="user-badge">Customer</span>
                     {% endif %}
                 </td>
                 <td>{{ u.booking_count }}</td>
                 <td>
-                    {% if not u.is_admin %}
+                    {% if u.role != 'admin' %}
                     <form method="POST" action="/admin/users/delete/{{ u.id }}" onsubmit="return confirm('Delete this user?')">
                         <button class="btn btn-danger admin-action-btn" type="submit">Delete</button>
                     </form>

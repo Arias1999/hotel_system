@@ -1205,28 +1205,67 @@ footer {
 
 .admin-nav {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     flex-wrap: wrap;
+    background: #1a1a2e;
+    border: 1px solid #2e2e42;
+    border-radius: 14px;
+    padding: 6px;
 }
 
 .admin-nav-btn {
-    padding: 8px 18px;
-    border-radius: 20px;
-    border: 1px solid #c9a84c55;
-    color: #b0a090;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border-radius: 10px;
+    border: none;
+    color: #8a7a6a;
     text-decoration: none;
     font-size: 13px;
     font-weight: 500;
-    background: #252538;
-    transition: all 0.2s;
+    background: transparent;
+    transition: color 0.2s, background 0.2s;
+    white-space: nowrap;
 }
 
-.admin-nav-btn:hover,
+.admin-nav-btn:hover {
+    color: #f0e8d8;
+    background: #252538;
+}
+
 .admin-nav-btn.active {
-    background: linear-gradient(135deg, #c9a84c, #a07830);
-    color: #1e1e2e;
-    border-color: transparent;
+    color: #c9a84c;
+    background: #252538;
     font-weight: 600;
+}
+
+/* gold indicator bar at the bottom of active item */
+.admin-nav-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 16px;
+    right: 16px;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #c9a84c, #a07830);
+}
+
+.nav-icon {
+    font-size: 15px;
+    line-height: 1;
+}
+
+.admin-nav-logout {
+    margin-left: auto;
+    color: #8a5a5a;
+}
+
+.admin-nav-logout:hover {
+    color: #cf9e9e;
+    background: #2e1e1e;
 }
 
 .admin-stats {

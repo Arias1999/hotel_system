@@ -4,13 +4,13 @@
 <div class="admin-header">
     <h2>📋 Manage Bookings</h2>
     <div class="admin-nav">
-        <a href="/admin" class="admin-nav-btn">Dashboard</a>
-        <a href="/admin/bookings" class="admin-nav-btn active">Bookings</a>
-        <a href="/admin/payments" class="admin-nav-btn">Payments</a>
-        <a href="/admin/rooms" class="admin-nav-btn">Rooms</a>
-        <a href="/admin/users" class="admin-nav-btn">Users</a>
-        <a href="/admin/sql" class="admin-nav-btn">SQL Console</a>
-        <a href="/admin/logout" class="admin-nav-btn" style="margin-left:auto;color:#e74c3c;">Logout</a>
+        <a href="/admin" class="admin-nav-btn"><span class="nav-icon">🏠</span>Dashboard</a>
+        <a href="/admin/bookings" class="admin-nav-btn active"><span class="nav-icon">📋</span>Bookings</a>
+        <a href="/admin/payments" class="admin-nav-btn"><span class="nav-icon">💳</span>Payments</a>
+        <a href="/admin/rooms" class="admin-nav-btn"><span class="nav-icon">🛏️</span>Rooms</a>
+        <a href="/admin/users" class="admin-nav-btn"><span class="nav-icon">👥</span>Users</a>
+        <a href="/admin/sql" class="admin-nav-btn"><span class="nav-icon">🖥️</span>SQL Console</a>
+        <a href="/logout" class="admin-nav-btn admin-nav-logout"><span class="nav-icon">🚪</span>Logout</a>
     </div>
 </div>
 
@@ -43,12 +43,12 @@
                 <td style="display:flex;gap:6px;flex-wrap:wrap;">
                     {% if (b.pay_status or b.payment_status) != 'Paid' %}
                     <form method="POST" action="/admin/bookings/confirm/{{ b.id }}">
-                        <button class="btn btn-success admin-action-btn" type="submit">Confirm</button>
+                        <button class="btn admin-action-btn" type="submit">Confirm</button>
                     </form>
                     {% endif %}
                     {% if (b.pay_status or b.payment_status) not in ['Cancelled', 'Paid'] %}
                     <form method="POST" action="/admin/bookings/reject/{{ b.id }}">
-                        <button class="btn btn-warning admin-action-btn" type="submit">Reject</button>
+                        <button class="btn btn-outline admin-action-btn" type="submit">Reject</button>
                     </form>
                     {% endif %}
                     <form method="POST" action="/admin/bookings/delete/{{ b.id }}" onsubmit="return confirm('Delete this booking?')">
