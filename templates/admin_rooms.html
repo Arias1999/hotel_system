@@ -1,64 +1,66 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
+
+{% block title %}Rooms{% endblock %}
+{% block nav_rooms %}active{% endblock %}
+{% block page_title %}Rooms{% endblock %}
+{% block page_subtitle %}Add and manage hotel rooms{% endblock %}
+
 {% block content %}
 
-<div class="admin-header">
-    <h2>🛏️ Manage Rooms</h2>
-    <div class="admin-nav">
-        <a href="/admin" class="admin-nav-btn"><span class="nav-icon">🏠</span>Dashboard</a>
-        <a href="/admin/bookings" class="admin-nav-btn"><span class="nav-icon">📋</span>Bookings</a>
-        <a href="/admin/payments" class="admin-nav-btn"><span class="nav-icon">💳</span>Payments</a>
-        <a href="/admin/rooms" class="admin-nav-btn active"><span class="nav-icon">🛏️</span>Rooms</a>
-        <a href="/admin/users" class="admin-nav-btn"><span class="nav-icon">👥</span>Users</a>
-        <a href="/logout" class="admin-nav-btn admin-nav-logout"><span class="nav-icon">🚪</span>Logout</a>
+<div class="form-card">
+    <div class="form-card-header"><h3>➕ Add New Room</h3></div>
+    <div class="form-card-body">
+        <form method="POST" action="/admin/rooms/add" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;width:100%;">
+            <input class="admin-input" type="text"   name="name"        placeholder="Room name"        required>
+            <input class="admin-input" type="number" name="price"       placeholder="Price / night"    min="0" step="0.01" required style="flex:0 1 140px;">
+            <input class="admin-input" type="text"   name="description" placeholder="Description">
+            <input class="admin-input" type="text"   name="image"       placeholder="Image URL"        style="flex:0 1 200px;">
+            <select class="admin-select" name="category" style="flex:0 1 130px;">
+                <option value="Standard">Standard</option>
+                <option value="Suite">Suite</option>
+                <option value="Luxury">Luxury</option>
+                <option value="Family">Family</option>
+            </select>
+            <button class="btn-sm btn-gold" type="submit">Add Room</button>
+        </form>
     </div>
 </div>
 
-<div class="admin-form-card">
-    <h3>Add New Room</h3>
-    <form method="POST" action="/admin/rooms/add" class="admin-add-form">
-        <input type="text" name="name" placeholder="Room name" required>
-        <input type="number" name="price" placeholder="Price per night" min="0" step="0.01" required>
-        <input type="text" name="description" placeholder="Description">
-        <input type="text" name="image" placeholder="Image URL">
-        <select name="category">
-            <option value="Standard">Standard</option>
-            <option value="Suite">Suite</option>
-            <option value="Luxury">Luxury</option>
-            <option value="Family">Family</option>
-        </select>
-        <button class="btn" type="submit">Add Room</button>
-    </form>
-</div>
-
-<div class="admin-table-wrap">
-    <table>
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Price / night</th>
-                <th>Description</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for r in rooms %}
-            <tr>
-                <td>{{ r.id }}</td>
-                <td>{{ r.name }}</td>
-                <td>{{ r.category }}</td>
-                <td>₱{{ "%.2f" | format(r.price | float) }}</td>
-                <td>{{ r.description or '—' }}</td>
-                <td>
-                    <form method="POST" action="/admin/rooms/delete/{{ r.id }}" onsubmit="return confirm('Delete this room?')">
-                        <button class="btn btn-danger admin-action-btn" type="submit">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="card">
+    <div class="card-header">
+        <h3>All Rooms</h3>
+        <span class="card-badge">{{ rooms|length }} total</span>
+    </div>
+    <div class="table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Price / Night</th>
+                    <th>Description</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rooms %}
+                <tr>
+                    <td>#{{ r.id }}</td>
+                    <td>{{ r.name }}</td>
+                    <td>{{ r.category }}</td>
+                    <td>₱{{ "%.2f"|format(r.price|float) }}</td>
+                    <td>{{ r.description or '—' }}</td>
+                    <td>
+                        <form method="POST" action="/admin/rooms/delete/{{ r.id }}" onsubmit="return confirm('Delete this room?')">
+                            <button class="btn-sm btn-danger" type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 {% endblock %}

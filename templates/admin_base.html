@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin{% endblock %} — HotelBook</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --gold:        #C9A34E;
+            --gold-light:  #e0bc72;
+            --gold-dark:   #a07830;
+            --gold-dim:    rgba(201,163,78,0.12);
+            --gold-border: rgba(201,163,78,0.22);
+            --bg:          #0d0d0d;
+            --bg-card:     #141414;
+            --bg-card2:    #1a1a1a;
+            --sidebar-w:   230px;
+            --text:        #f0ead8;
+            --text-muted:  #6a6050;
+            --text-sub:    #a09070;
+            --radius:      12px;
+            --radius-lg:   18px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            width: var(--sidebar-w);
+            min-height: 100vh;
+            background: #080808;
+            border-right: 1px solid var(--gold-border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; left: 0;
+            z-index: 100;
+        }
+
+        .sidebar-brand {
+            padding: 26px 18px 22px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--gold-border);
+        }
+
+        .brand-icon {
+            width: 52px; height: 52px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            display: grid; place-items: center;
+            font-size: 22px;
+            box-shadow: 0 0 24px rgba(201,163,78,0.28);
+        }
+
+        .brand-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--gold);
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 18px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 10px 13px;
+            border-radius: var(--radius);
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.18s ease;
+        }
+
+        .nav-item:hover {
+            background: var(--gold-dim);
+            color: var(--gold-light);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            color: #0d0d0d;
+            font-weight: 700;
+            box-shadow: 0 4px 18px rgba(201,163,78,0.22);
+        }
+
+        .nav-item.active .nav-icon { filter: brightness(0); }
+
+        .nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+
+        .sidebar-footer {
+            padding: 14px 10px 22px;
+            border-top: 1px solid var(--gold-border);
+        }
+
+        .nav-item.logout { color: #6a3a3a; }
+        .nav-item.logout:hover { background: rgba(160,50,50,0.1); color: #d07070; }
+
+        /* ── MAIN ── */
+        .main {
+            margin-left: var(--sidebar-w);
+            flex: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── TOPBAR ── */
+        .topbar {
+            padding: 26px 30px 0;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .topbar-title h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 26px;
+            color: var(--text);
+            margin-bottom: 3px;
+        }
+
+        .topbar-title p { font-size: 12.5px; color: var(--text-muted); }
+
+        .btn-outline-gold {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 18px;
+            border: 1.5px solid var(--gold);
+            border-radius: 10px;
+            color: var(--gold);
+            font-size: 12.5px;
+            font-weight: 600;
+            text-decoration: none;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.18s;
+            white-space: nowrap;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-outline-gold:hover { background: var(--gold); color: #0d0d0d; }
+
+        /* ── FLASH ── */
+        .flash-area { padding: 14px 30px 0; }
+
+        .flash {
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .flash-success { background: #0a1f12; color: #6ecf9e; border: 1px solid #1e4a2e; }
+        .flash-error   { background: #1f0a0a; color: #d07070; border: 1px solid #4a1e1e; }
+
+        /* ── CONTENT ── */
+        .content { padding: 22px 30px 40px; flex: 1; }
+
+        /* ── STAT CARDS ── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--gold-border);
+            border-radius: var(--radius-lg);
+            padding: 18px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(201,163,78,0.1);
+        }
+
+        .stat-icon-wrap {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            display: grid; place-items: center;
+            font-size: 18px;
+        }
+
+        .stat-value { font-size: 24px; font-weight: 700; color: var(--text); line-height: 1; }
+        .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; margin-top: 2px; }
+        .stat-delta { font-size: 11px; color: #5eba88; margin-top: 3px; }
+
+        /* ── MID ROW ── */
+        .mid-row {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        /* ── BOTTOM ROW ── */
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        /* ── CARD ── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--gold-border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 20px 13px;
+            border-bottom: 1px solid var(--gold-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-header h3 { font-size: 13.5px; font-weight: 600; color: var(--text); }
+
+        .card-badge {
+            font-size: 10.5px;
+            color: var(--gold);
+            background: var(--gold-dim);
+            border: 1px solid var(--gold-border);
+            padding: 2px 9px;
+            border-radius: 20px;
+        }
+
+        /* ── TABLE ── */
+        .admin-table { width: 100%; border-collapse: collapse; }
+
+        .admin-table th {
+            padding: 10px 16px;
+            text-align: left;
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            background: #0f0f0f;
+            border-bottom: 1px solid var(--gold-border);
+        }
+
+        .admin-table td {
+            padding: 12px 16px;
+            font-size: 12.5px;
+            color: var(--text-sub);
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .admin-table tr:last-child td { border-bottom: none; }
+        .admin-table tr:hover td { background: rgba(201,163,78,0.04); color: var(--text); }
+
+        /* ── BADGE ── */
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+        }
+
+        .badge-pending  { border: 1px solid var(--gold); color: var(--gold); background: var(--gold-dim); }
+        .badge-paid     { border: 1px solid #3a8a5a; color: #6ecf9e; background: rgba(60,140,90,0.1); }
+        .badge-cancelled{ border: 1px solid #6a2a2a; color: #d07070; background: rgba(160,50,50,0.1); }
+
+        /* ── CHART ── */
+        .chart-wrap { padding: 20px 18px; }
+
+        .chart-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 7px;
+            height: 110px;
+        }
+
+        .chart-bar-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            height: 100%;
+            justify-content: flex-end;
+        }
+
+        .chart-bar {
+            width: 100%;
+            border-radius: 5px 5px 0 0;
+            background: linear-gradient(180deg, var(--gold), var(--gold-dark));
+        }
+
+        .chart-bar.muted {
+            background: #1e1e1e;
+            border: 1px solid var(--gold-border);
+        }
+
+        .chart-lbl { font-size: 9.5px; color: var(--text-muted); }
+
+        .chart-legend {
+            display: flex;
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .legend-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+        .legend-dot.muted { background: #1e1e1e; border: 1px solid var(--gold-border); }
+
+        /* ── ROOM BARS ── */
+        .room-list { padding: 16px 20px; display: flex; flex-direction: column; gap: 13px; }
+
+        .room-row { display: flex; align-items: center; gap: 10px; }
+
+        .room-lbl { font-size: 12px; color: var(--text-sub); width: 72px; flex-shrink: 0; }
+
+        .bar-track {
+            flex: 1; height: 5px;
+            background: #1a1a1a;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--gold), var(--gold-dark));
+        }
+
+        .room-pct { font-size: 11.5px; color: var(--gold); font-weight: 600; width: 34px; text-align: right; }
+
+        /* ── ACTION BUTTONS ── */
+        .btn-sm {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 12px;
+            border-radius: 7px;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+            text-decoration: none;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-gold { background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: #0d0d0d; }
+        .btn-gold:hover { opacity: 0.85; }
+
+        .btn-ghost { background: transparent; border: 1px solid var(--gold-border); color: var(--text-sub); }
+        .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+
+        .btn-danger { background: transparent; border: 1px solid #5a2a2a; color: #d07070; }
+        .btn-danger:hover { background: rgba(160,50,50,0.15); }
+
+        .btn-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+
+        /* ── FORM ELEMENTS ── */
+        .admin-input, .admin-select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--gold-border);
+            background: #0f0f0f;
+            color: var(--text);
+            font-size: 12.5px;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.15s;
+        }
+
+        .admin-input:focus, .admin-select:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        .admin-input::placeholder { color: var(--text-muted); }
+
+        /* ── ADD FORM CARD ── */
+        .form-card {
+            background: var(--bg-card);
+            border: 1px solid var(--gold-border);
+            border-radius: var(--radius-lg);
+            margin-bottom: 18px;
+            overflow: hidden;
+        }
+
+        .form-card-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--gold-border);
+            background: #0f0f0f;
+        }
+
+        .form-card-header h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gold);
+        }
+
+        .form-card-body {
+            padding: 18px 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .form-card-body .admin-input { flex: 1 1 150px; }
+
+        /* ── TABLE WRAP ── */
+        .table-wrap { overflow-x: auto; }
+
+        /* ── STATUS FORM ── */
+        .status-form { display: flex; gap: 6px; align-items: center; }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #080808; }
+        ::-webkit-scrollbar-thumb { background: #222; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--gold-dark); }
+    </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <div class="brand-icon">⚙️</div>
+        <div class="brand-text">Admin<br>Dashboard</div>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="/admin"          class="nav-item {% block nav_dashboard %}{% endblock %}"><span class="nav-icon">🏠</span> Dashboard</a>
+        <a href="/admin/bookings" class="nav-item {% block nav_bookings %}{% endblock %}"><span class="nav-icon">📋</span> Bookings</a>
+        <a href="/admin/payments" class="nav-item {% block nav_payments %}{% endblock %}"><span class="nav-icon">💳</span> Payments</a>
+        <a href="/admin/rooms"    class="nav-item {% block nav_rooms %}{% endblock %}"><span class="nav-icon">🛏️</span> Rooms</a>
+        <a href="/admin/users"    class="nav-item {% block nav_users %}{% endblock %}"><span class="nav-icon">👥</span> Users</a>
+    </nav>
+    <div class="sidebar-footer">
+        <a href="/logout" class="nav-item logout"><span class="nav-icon">🚪</span> Logout</a>
+    </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+    <div class="topbar">
+        <div class="topbar-title">
+            <h1>{% block page_title %}Admin{% endblock %}</h1>
+            <p>{% block page_subtitle %}Welcome back, Admin!{% endblock %}</p>
+        </div>
+        <a href="/logout" class="btn-outline-gold">🚪 Logout</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-area">
+            {% for category, msg in messages %}
+            <div class="flash flash-{{ category }}">{{ msg }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+</div>
+
+</body>
+</html>

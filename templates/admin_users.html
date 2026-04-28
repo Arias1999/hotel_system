@@ -1,55 +1,53 @@
-{% extends "base.html" %}
-{% block content %}
+{% extends "admin_base.html" %}
 
-<div class="admin-header">
-    <h2>👥 Manage Users</h2>
-    <div class="admin-nav">
-        <a href="/admin" class="admin-nav-btn"><span class="nav-icon">🏠</span>Dashboard</a>
-        <a href="/admin/bookings" class="admin-nav-btn"><span class="nav-icon">📋</span>Bookings</a>
-        <a href="/admin/payments" class="admin-nav-btn"><span class="nav-icon">💳</span>Payments</a>
-        <a href="/admin/rooms" class="admin-nav-btn"><span class="nav-icon">🛏️</span>Rooms</a>
-        <a href="/admin/users" class="admin-nav-btn active"><span class="nav-icon">👥</span>Users</a>
-        <a href="/logout" class="admin-nav-btn admin-nav-logout"><span class="nav-icon">🚪</span>Logout</a>
+{% block title %}Users{% endblock %}
+{% block nav_users %}active{% endblock %}
+{% block page_title %}Users{% endblock %}
+{% block page_subtitle %}Manage registered accounts{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>All Users</h3>
+        <span class="card-badge">{{ users|length }} total</span>
+    </div>
+    <div class="table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Bookings</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>
+                        {% if u.is_admin %}
+                            <span class="badge badge-paid">Admin</span>
+                        {% else %}
+                            <span class="badge badge-pending">Customer</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ u.booking_count }}</td>
+                    <td>
+                        {% if not u.is_admin %}
+                        <form method="POST" action="/admin/users/delete/{{ u.id }}" onsubmit="return confirm('Delete this user?')">
+                            <button class="btn-sm btn-danger" type="submit">Delete</button>
+                        </form>
+                        {% else %}
+                        <span style="font-size:11.5px;color:var(--text-muted);">Protected</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
-
-<div class="admin-table-wrap">
-    <table>
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Bookings</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for u in users %}
-            <tr>
-                <td>{{ u.id }}</td>
-                <td>{{ u.email }}</td>
-                <td>
-                    {% if u.role == 'admin' %}
-                        <span class="admin-badge">Admin</span>
-                    {% else %}
-                        <span class="user-badge">Customer</span>
-                    {% endif %}
-                </td>
-                <td>{{ u.booking_count }}</td>
-                <td>
-                    {% if u.role != 'admin' %}
-                    <form method="POST" action="/admin/users/delete/{{ u.id }}" onsubmit="return confirm('Delete this user?')">
-                        <button class="btn btn-danger admin-action-btn" type="submit">Delete</button>
-                    </form>
-                    {% else %}
-                    <span style="color:#6a5a4a;font-size:13px;">Protected</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
 {% endblock %}

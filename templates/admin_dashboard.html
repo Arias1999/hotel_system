@@ -1,82 +1,153 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Welcome back, Admin!{% endblock %}
+
 {% block content %}
 
-<div class="admin-header">
-    <h2>⚙️ Admin Dashboard</h2>
-    <div class="admin-nav">
-        <a href="/admin" class="admin-nav-btn active"><span class="nav-icon">🏠</span>Dashboard</a>
-        <a href="/admin/bookings" class="admin-nav-btn"><span class="nav-icon">📋</span>Bookings</a>
-        <a href="/admin/payments" class="admin-nav-btn"><span class="nav-icon">💳</span>Payments</a>
-        <a href="/admin/rooms" class="admin-nav-btn"><span class="nav-icon">🛏️</span>Rooms</a>
-        <a href="/admin/users" class="admin-nav-btn"><span class="nav-icon">👥</span>Users</a>
-        <a href="/logout" class="admin-nav-btn admin-nav-logout"><span class="nav-icon">🚪</span>Logout</a>
-    </div>
-</div>
-
-<div class="admin-stats">
+<!-- STAT CARDS -->
+<div class="stats-row">
     <div class="stat-card">
-        <div class="stat-icon">👥</div>
-        <div class="stat-info">
-            <p class="stat-value">{{ total_users }}</p>
-            <p class="stat-label">Total Users</p>
+        <div class="stat-icon-wrap">📋</div>
+        <div>
+            <div class="stat-value">{{ total_bookings }}</div>
+            <div class="stat-label">Total Bookings</div>
+            <div class="stat-delta">↑ All time</div>
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon">🛏️</div>
-        <div class="stat-info">
-            <p class="stat-value">{{ total_rooms }}</p>
-            <p class="stat-label">Total Rooms</p>
+        <div class="stat-icon-wrap">💳</div>
+        <div>
+            <div class="stat-value">₱{{ "%.0f"|format(total_revenue|float) }}</div>
+            <div class="stat-label">Total Revenue</div>
+            <div class="stat-delta">Paid only</div>
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon">📋</div>
-        <div class="stat-info">
-            <p class="stat-value">{{ total_bookings }}</p>
-            <p class="stat-label">Total Bookings</p>
+        <div class="stat-icon-wrap">🛏️</div>
+        <div>
+            <div class="stat-value">{{ total_rooms }}</div>
+            <div class="stat-label">Total Rooms</div>
+            <div class="stat-delta">Active listings</div>
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon">💰</div>
-        <div class="stat-info">
-            <p class="stat-value">₱{{ "%.2f" | format(total_revenue | float) }}</p>
-            <p class="stat-label">Total Revenue</p>
+        <div class="stat-icon-wrap">👥</div>
+        <div>
+            <div class="stat-value">{{ total_users }}</div>
+            <div class="stat-label">Total Users</div>
+            <div class="stat-delta">Registered</div>
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon">⏳</div>
-        <div class="stat-info">
-            <p class="stat-value">{{ pending_payments }}</p>
-            <p class="stat-label">Pending Payments</p>
+        <div class="stat-icon-wrap">⏳</div>
+        <div>
+            <div class="stat-value">{{ pending_payments }}</div>
+            <div class="stat-label">Pending Payments</div>
+            <div class="stat-delta">Awaiting action</div>
         </div>
     </div>
 </div>
 
-<h2 style="margin-top:36px;">Recent Bookings</h2>
-<div class="admin-table-wrap">
-    <table>
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Guest</th>
-                <th>Room</th>
-                <th>Check-in</th>
-                <th>Check-out</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for b in recent_bookings %}
-            <tr>
-                <td>{{ b.id }}</td>
-                <td>{{ b.user_email }}</td>
-                <td>{{ b.room_name }}</td>
-                <td>{{ b.checkin }}</td>
-                <td>{{ b.checkout }}</td>
-                <td><span class="payment-status-badge status-{{ (b.payment_status or 'pending') | lower }}">{{ b.payment_status or 'Pending' }}</span></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<!-- MID ROW -->
+<div class="mid-row">
+
+    <!-- RECENT BOOKINGS -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Recent Bookings</h3>
+            <span class="card-badge">Last 5</span>
+        </div>
+        <div class="table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Guest</th>
+                        <th>Room</th>
+                        <th>Check-in</th>
+                        <th>Check-out</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in recent_bookings %}
+                    <tr>
+                        <td>#{{ b.id }}</td>
+                        <td>{{ b.user_email }}</td>
+                        <td>{{ b.room_name }}</td>
+                        <td>{{ b.checkin }}</td>
+                        <td>{{ b.checkout }}</td>
+                        <td><span class="badge badge-{{ (b.payment_status or 'pending')|lower }}">{{ b.payment_status or 'Pending' }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- BOOKINGS OVERVIEW CHART -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Bookings Overview</h3>
+            <span class="card-badge">This Week</span>
+        </div>
+        <div class="chart-wrap">
+            <div class="chart-bars">
+                <div class="chart-bar-col"><div class="chart-bar" style="height:42%"></div><span class="chart-lbl">Mon</span></div>
+                <div class="chart-bar-col"><div class="chart-bar" style="height:68%"></div><span class="chart-lbl">Tue</span></div>
+                <div class="chart-bar-col"><div class="chart-bar muted" style="height:30%"></div><span class="chart-lbl">Wed</span></div>
+                <div class="chart-bar-col"><div class="chart-bar" style="height:82%"></div><span class="chart-lbl">Thu</span></div>
+                <div class="chart-bar-col"><div class="chart-bar" style="height:55%"></div><span class="chart-lbl">Fri</span></div>
+                <div class="chart-bar-col"><div class="chart-bar" style="height:95%"></div><span class="chart-lbl">Sat</span></div>
+                <div class="chart-bar-col"><div class="chart-bar muted" style="height:40%"></div><span class="chart-lbl">Sun</span></div>
+            </div>
+            <div class="chart-legend">
+                <div class="legend-item"><div class="legend-dot"></div>Confirmed</div>
+                <div class="legend-item"><div class="legend-dot muted"></div>Pending</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- BOTTOM ROW -->
+<div class="bottom-row">
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Quick Actions</h3>
+        </div>
+        <div style="padding:18px 20px;display:flex;flex-wrap:wrap;gap:10px;">
+            <a href="/admin/bookings" class="btn-sm btn-gold">📋 View Bookings</a>
+            <a href="/admin/payments" class="btn-sm btn-gold">💳 View Payments</a>
+            <a href="/admin/rooms"    class="btn-sm btn-ghost">🛏️ Manage Rooms</a>
+            <a href="/admin/users"    class="btn-sm btn-ghost">👥 Manage Users</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>System Info</h3>
+        </div>
+        <div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;">
+                <span style="color:var(--text-muted)">Database</span>
+                <span style="color:#6ecf9e;font-weight:600;">● Connected</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;">
+                <span style="color:var(--text-muted)">Environment</span>
+                <span style="color:var(--gold)">Production</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;">
+                <span style="color:var(--text-muted)">SSL</span>
+                <span style="color:#6ecf9e;font-weight:600;">● Enabled</span>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 {% endblock %}
