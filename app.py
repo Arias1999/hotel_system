@@ -69,34 +69,53 @@ def login():
     return render_template("login.html")
 
 
+from werkzeug.security import generate_password_hash
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     email = ""
-    if request.method == "POST":
-        email = request.form["email"].strip()
-        password = request.form["password"]
-        confirm_password = request.form.get("confirm_password", "")
 
-        if not valid_email(email):
-            flash("Please provide a valid email address.", "error")
-        elif len(password) < 6:
-            flash("Password must be at least 6 characters long.", "error")
-        elif password != confirm_password:
-            flash("Passwords do not match.", "error")
-        else:
-            hashed_password = hash_password(password)
-            existing = db.fetchone("SELECT id FROM users WHERE email = %s", (email,))
-            if existing:
-                flash("Email already registered.", "error")
-                return render_template("register.html", email=email)
-            db.execute(
-                "INSERT INTO users (email, password) VALUES (%s, %s)", (email, hashed_password)
-            )
-            flash("Account created! Please log in.", "success")
-            return redirect("/")
+    if request.method == "POST":
+        try:
+            email = request.form["email"].strip().lower()
+            password = request.form["password"]
+            confirm_password = request.form.get("confirm_password", "")
+
+            if not valid_email(email):
+                flash("Please provide a valid email address.", "error")
+
+            elif len(password) < 6:
+                flash("Password must be at least 6 characters long.", "error")
+
+            elif password != confirm_password:
+                flash("Passwords do not match.", "error")
+
+            else:
+                hashed_password = generate_password_hash(password)
+
+                # 🔥 THIS IS WHERE YOUR ERROR CURRENTLY HAPPENS
+                existing = db.fetchone(
+                    "SELECT id FROM users WHERE email = %s",
+                    (email,)
+                )
+
+                if existing:
+                    flash("Email already registered.", "error")
+                    return render_template("register.html", email=email)
+
+                db.execute(
+                    "INSERT INTO users (email, password) VALUES (%s, %s)",
+                    (email, hashed_password)
+                )
+
+                flash("Account created! Please log in.", "success")
+                return redirect("/")
+
+        except Exception as e:
+            print("REGISTER ERROR:", e)  # shows in Vercel logs
+            flash("Something went wrong. Please try again.", "error")
 
     return render_template("register.html", email=email)
-
 
 @app.route("/logout")
 def logout():
