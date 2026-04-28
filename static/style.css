@@ -1,5 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;500;600&display=swap');
 
+:root {
+    --bg:          #1e1e2e;
+    --bg-nav:      #16162a;
+    --bg-card:     #252538;
+    --accent:      #c9a84c;
+    --accent-dark: #a07830;
+    --text:        #e8e0d0;
+    --text-muted:  #8a7a6a;
+    --border:      #35354a;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -8,25 +19,27 @@
 
 body {
     font-family: 'Poppins', sans-serif;
-    background: #1e1e2e;
-    color: #e8e0d0;
+    background: var(--bg);
+    color: var(--text);
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    transition: background 0.3s, color 0.3s;
 }
 
 /* ── NAV ── */
 nav {
-    background: #16162a;
+    background: var(--bg-nav);
     padding: 16px 40px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid #c9a84c44;
+    border-bottom: 1px solid rgba(201,168,76,0.27);
+    transition: background 0.3s;
 }
 
 .brand {
-    color: #c9a84c;
+    color: var(--accent);
     font-family: 'Playfair Display', serif;
     font-size: 22px;
     font-weight: 700;
@@ -34,7 +47,7 @@ nav {
 }
 
 .nav-links a {
-    color: #c8c0b0;
+    color: var(--text-muted);
     text-decoration: none;
     margin-left: 28px;
     font-size: 13px;
@@ -45,7 +58,7 @@ nav {
 }
 
 .nav-links a:hover {
-    color: #c9a84c;
+    color: var(--accent);
 }
 
 /* ── CONTAINER ── */
@@ -1073,13 +1086,14 @@ tr:hover td {
 
 /* ── FOOTER ── */
 footer {
-    background: #16162a;
-    color: #6a6a80;
+    background: var(--bg-nav);
+    color: var(--text-muted);
     text-align: center;
     padding: 24px 40px;
     margin-top: auto;
     font-size: 13px;
-    border-top: 1px solid #c9a84c22;
+    border-top: 1px solid rgba(201,168,76,0.13);
+    transition: background 0.3s;
 }
 
 .footer-links {

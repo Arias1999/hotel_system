@@ -24,10 +24,6 @@
                     <a href="/profile" class="dropdown-item">👤 My Profile</a>
                     <a href="/settings" class="dropdown-item">⚙️ Settings</a>
                     <hr>
-                    {% if session.get('is_admin') %}
-                    <a href="/admin" class="dropdown-item">🛠️ Admin Dashboard</a>
-                    <hr>
-                    {% endif %}
                     <a href="/logout" class="dropdown-item">🚪 Logout</a>
                 </div>
             </div>
@@ -57,12 +53,23 @@
     </footer>
 
     <script>
+        /* Apply saved theme on every page load */
+        (function() {
+            const themes = {
+                'dark-gold': { '--bg':'#1e1e2e','--bg-nav':'#16162a','--bg-card':'#252538','--accent':'#c9a84c','--accent-dark':'#a07830','--text':'#e8e0d0','--text-muted':'#8a7a6a','--border':'#35354a' },
+                'midnight':  { '--bg':'#0d0d1a','--bg-nav':'#080814','--bg-card':'#12122a','--accent':'#4a6fa5','--accent-dark':'#2a4f85','--text':'#d0d8f0','--text-muted':'#6a7a9a','--border':'#1e2a4a' },
+                'forest':    { '--bg':'#0a140e','--bg-nav':'#060e08','--bg-card':'#101e14','--accent':'#4a9e6e','--accent-dark':'#2a7e4e','--text':'#d0e8d8','--text-muted':'#5a7a6a','--border':'#1a3a24' },
+                'light':     { '--bg':'#f4f4f0','--bg-nav':'#ffffff','--bg-card':'#ffffff','--accent':'#8a6a2a','--accent-dark':'#6a4a10','--text':'#1a1a2e','--text-muted':'#6a6a7a','--border':'#ddd8c8' },
+            };
+            const name = localStorage.getItem('theme') || 'dark-gold';
+            const vars = themes[name];
+            if (vars) Object.entries(vars).forEach(([k,v]) => document.documentElement.style.setProperty(k, v));
+        })();
+
         function toggleProfileMenu() {
             const dropdown = document.getElementById('profileDropdown');
             dropdown.classList.toggle('show');
         }
-
-        // Close dropdown when clicking outside
         document.addEventListener('click', function(event) {
             const profileMenu = document.querySelector('.profile-menu');
             const dropdown = document.getElementById('profileDropdown');

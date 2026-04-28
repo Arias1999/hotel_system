@@ -2,10 +2,11 @@
 
 {% block content %}
 <div class="settings-page">
-    <h2>Account Settings</h2>
-    
+    <h2>⚙️ Account Settings</h2>
+
     <div class="settings-container">
-        <!-- User Information Section -->
+
+        <!-- Profile Information -->
         <div class="settings-card">
             <div class="settings-card-header">
                 <h3>👤 Profile Information</h3>
@@ -15,45 +16,63 @@
                     <label>Email Address</label>
                     <p class="setting-value">{{ user_email }}</p>
                 </div>
+                <div class="setting-item">
+                    <label>Account Status</label>
+                    <span class="badge-enabled">Active</span>
+                </div>
+                <div class="setting-item">
+                    <label>Role</label>
+                    <p class="setting-value">{% if session.get('is_admin') %}Administrator{% else %}Guest{% endif %}</p>
+                </div>
             </div>
         </div>
 
-        <!-- Account Settings Section -->
+        <!-- Theme Switcher -->
         <div class="settings-card">
             <div class="settings-card-header">
-                <h3>⚙️ Account Settings</h3>
+                <h3>🎨 Theme</h3>
             </div>
             <div class="settings-card-body">
                 <div class="setting-item">
-                    <label>Account Status</label>
-                    <p class="setting-value">Active</p>
+                    <label>Choose your theme</label>
+                    <p class="setting-description">Your preference is saved in your browser.</p>
                 </div>
-                <div class="setting-item">
-                    <label>Member Since</label>
-                    <p class="setting-value">Joined HotelBook</p>
+                <div class="theme-options">
+                    <button class="theme-btn" data-theme="dark-gold" onclick="setTheme('dark-gold')">
+                        <span class="theme-swatch" style="background:linear-gradient(135deg,#1e1e2e,#c9a84c)"></span>
+                        Dark Gold
+                    </button>
+                    <button class="theme-btn" data-theme="midnight" onclick="setTheme('midnight')">
+                        <span class="theme-swatch" style="background:linear-gradient(135deg,#0a0a1a,#4a6fa5)"></span>
+                        Midnight Blue
+                    </button>
+                    <button class="theme-btn" data-theme="forest" onclick="setTheme('forest')">
+                        <span class="theme-swatch" style="background:linear-gradient(135deg,#0a1a0e,#4a9e6e)"></span>
+                        Forest
+                    </button>
+                    <button class="theme-btn" data-theme="light" onclick="setTheme('light')">
+                        <span class="theme-swatch" style="background:linear-gradient(135deg,#f4f4f4,#888)"></span>
+                        Light
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Preferences Section -->
+        <!-- Preferences -->
         <div class="settings-card">
             <div class="settings-card-header">
-                <h3>🎨 Preferences</h3>
+                <h3>🔔 Preferences</h3>
             </div>
             <div class="settings-card-body">
                 <div class="setting-item">
                     <label>Email Notifications</label>
-                    <p class="setting-description">Get updates about bookings and special offers</p>
+                    <p class="setting-description">Get updates about bookings and special offers.</p>
                     <span class="badge-enabled">Enabled</span>
-                </div>
-                <div class="setting-item">
-                    <label>Theme</label>
-                    <p class="setting-description">Dark Mode</p>
                 </div>
             </div>
         </div>
 
-        <!-- Danger Zone Section -->
+        <!-- Danger Zone -->
         <div class="settings-card danger-zone">
             <div class="settings-card-header">
                 <h3>🔴 Danger Zone</h3>
@@ -63,10 +82,123 @@
                 <button class="btn btn-danger-outline" onclick="alert('Delete account feature coming soon!')">Delete Account</button>
             </div>
         </div>
+
     </div>
 
     <div class="settings-footer">
-        <a href="/profile" class="btn btn-outline">Back to Profile</a>
+        <a href="/profile" class="btn btn-outline">← Back to Profile</a>
+        <a href="/home" class="btn">Home</a>
     </div>
 </div>
+
+<style>
+    .theme-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .theme-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 18px;
+        border-radius: 10px;
+        border: 1px solid #35354a;
+        background: #1e1e2e;
+        color: #e8e0d0;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+
+    .theme-btn:hover {
+        border-color: #c9a84c;
+        color: #c9a84c;
+    }
+
+    .theme-btn.active {
+        border-color: #c9a84c;
+        background: rgba(201,168,76,0.12);
+        color: #c9a84c;
+        font-weight: 700;
+    }
+
+    .theme-swatch {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+</style>
+
+<script>
+    const themes = {
+        'dark-gold': {
+            '--bg':           '#1e1e2e',
+            '--bg-nav':       '#16162a',
+            '--bg-card':      '#252538',
+            '--accent':       '#c9a84c',
+            '--accent-dark':  '#a07830',
+            '--text':         '#e8e0d0',
+            '--text-muted':   '#8a7a6a',
+            '--border':       '#35354a',
+        },
+        'midnight': {
+            '--bg':           '#0d0d1a',
+            '--bg-nav':       '#080814',
+            '--bg-card':      '#12122a',
+            '--accent':       '#4a6fa5',
+            '--accent-dark':  '#2a4f85',
+            '--text':         '#d0d8f0',
+            '--text-muted':   '#6a7a9a',
+            '--border':       '#1e2a4a',
+        },
+        'forest': {
+            '--bg':           '#0a140e',
+            '--bg-nav':       '#060e08',
+            '--bg-card':      '#101e14',
+            '--accent':       '#4a9e6e',
+            '--accent-dark':  '#2a7e4e',
+            '--text':         '#d0e8d8',
+            '--text-muted':   '#5a7a6a',
+            '--border':       '#1a3a24',
+        },
+        'light': {
+            '--bg':           '#f4f4f0',
+            '--bg-nav':       '#ffffff',
+            '--bg-card':      '#ffffff',
+            '--accent':       '#8a6a2a',
+            '--accent-dark':  '#6a4a10',
+            '--text':         '#1a1a2e',
+            '--text-muted':   '#6a6a7a',
+            '--border':       '#ddd8c8',
+        },
+    };
+
+    function setTheme(name) {
+        const vars = themes[name];
+        if (!vars) return;
+        const root = document.documentElement;
+        Object.entries(vars).forEach(([k, v]) => root.style.setProperty(k, v));
+
+        document.querySelectorAll('nav').forEach(el => el.style.background = vars['--bg-nav']);
+        document.querySelectorAll('footer').forEach(el => el.style.background = vars['--bg-nav']);
+        document.querySelectorAll('.card, .profile-card, .settings-card').forEach(el => el.style.background = vars['--bg-card']);
+        document.body.style.background = vars['--bg'];
+
+        localStorage.setItem('theme', name);
+
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === name);
+        });
+    }
+
+    const saved = localStorage.getItem('theme') || 'dark-gold';
+    setTheme(saved);
+</script>
 {% endblock %}
