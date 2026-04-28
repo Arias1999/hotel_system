@@ -71,9 +71,6 @@ def admin_logged_in():
 
 
 def admin_required():
-    if logged_in() and not admin_logged_in():
-        flash("Access denied. Admins only.", "error")
-        return redirect("/home")
     if not admin_logged_in():
         flash("Please log in to access the admin panel.", "error")
         return redirect("/login")
@@ -479,32 +476,44 @@ def admin_bookings():
     return render_template("admin_bookings.html", bookings=rows)
 
 
-@app.route("/admin/bookings/confirm/<int:booking_id>", methods=["POST"])
+@app.route("/admin/bookings/confirm/<booking_id>", methods=["POST"])
 def admin_confirm_booking(booking_id):
     guard = admin_required()
     if guard: return guard
-    db.execute("UPDATE bookings SET payment_status = 'Paid' WHERE id = %s", (booking_id,))
-    db.execute("UPDATE payments SET payment_status = 'Paid', paid_at = NOW() WHERE booking_id = %s", (booking_id,))
-    flash("Booking confirmed.", "success")
+    try:
+        db.execute("UPDATE bookings SET payment_status = 'Paid' WHERE id = %s", (booking_id,))
+        db.execute("UPDATE payments SET payment_status = 'Paid', paid_at = NOW() WHERE booking_id = %s", (booking_id,))
+        flash("Booking confirmed.", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Failed to confirm booking.", "error")
     return redirect("/admin/bookings")
 
 
-@app.route("/admin/bookings/reject/<int:booking_id>", methods=["POST"])
+@app.route("/admin/bookings/reject/<booking_id>", methods=["POST"])
 def admin_reject_booking(booking_id):
     guard = admin_required()
     if guard: return guard
-    db.execute("UPDATE bookings SET payment_status = 'Cancelled' WHERE id = %s", (booking_id,))
-    db.execute("UPDATE payments SET payment_status = 'Cancelled' WHERE booking_id = %s", (booking_id,))
-    flash("Booking rejected.", "success")
+    try:
+        db.execute("UPDATE bookings SET payment_status = 'Cancelled' WHERE id = %s", (booking_id,))
+        db.execute("UPDATE payments SET payment_status = 'Cancelled' WHERE booking_id = %s", (booking_id,))
+        flash("Booking rejected.", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Failed to reject booking.", "error")
     return redirect("/admin/bookings")
 
 
-@app.route("/admin/bookings/delete/<int:booking_id>", methods=["POST"])
+@app.route("/admin/bookings/delete/<booking_id>", methods=["POST"])
 def admin_delete_booking(booking_id):
     guard = admin_required()
     if guard: return guard
-    db.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
-    flash("Booking deleted.", "success")
+    try:
+        db.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
+        flash("Booking deleted.", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Failed to delete booking.", "error")
     return redirect("/admin/bookings")
 
 
@@ -524,7 +533,7 @@ def admin_payments():
     return render_template("admin_payments.html", payments=rows)
 
 
-@app.route("/admin/payments/update/<int:payment_id>", methods=["POST"])
+@app.route("/admin/payments/update/<payment_id>", methods=["POST"])
 def admin_update_payment(payment_id):
     guard = admin_required()
     if guard: return guard
@@ -566,7 +575,7 @@ def admin_add_room():
     return redirect("/admin/rooms")
 
 
-@app.route("/admin/rooms/delete/<int:room_id>", methods=["POST"])
+@app.route("/admin/rooms/delete/<room_id>", methods=["POST"])
 def admin_delete_room(room_id):
     guard = admin_required()
     if guard: return guard
@@ -591,7 +600,7 @@ def admin_users():
     return render_template("admin_users.html", users=users)
 
 
-@app.route("/admin/users/delete/<int:user_id>", methods=["POST"])
+@app.route("/admin/users/delete/<user_id>", methods=["POST"])
 def admin_delete_user(user_id):
     guard = admin_required()
     if guard: return guard
