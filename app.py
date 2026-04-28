@@ -93,7 +93,6 @@ def register():
             else:
                 hashed_password = generate_password_hash(password)
 
-                # 🔥 THIS IS WHERE YOUR ERROR CURRENTLY HAPPENS
                 existing = db.fetchone(
                     "SELECT id FROM users WHERE email = %s",
                     (email,)
@@ -112,8 +111,10 @@ def register():
                 return redirect("/")
 
         except Exception as e:
-            print("REGISTER ERROR:", e)  # shows in Vercel logs
-            flash("Something went wrong. Please try again.", "error")
+            import traceback
+            print("REGISTER ERROR:", e)
+            traceback.print_exc()
+            flash(f"Error: {str(e)}", "error")
 
     return render_template("register.html", email=email)
 
