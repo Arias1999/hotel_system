@@ -12,14 +12,50 @@ import db
 
 load_dotenv()
 
-
-
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "secret123")
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
+    SEND_FILE_MAX_AGE_DEFAULT=0,
 )
+
+
+def _migrate():
+    """Add missing columns and upsert the admin account."""
+    try:
+        db.execute("""
+            ALTER TABLE public.users
+            ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'customer'
+        """)
+        db.execute("""
+            ALTER TABLE public.users
+            ADD COLUMN IF NOT EXISTS full_name TEXT NOT NULL DEFAULT ''
+        """)
+        db.execute("""
+            ALTER TABLE public.users
+            ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''
+        """)
+        db.execute("""
+            UPDATE public.users SET role = 'admin' WHERE is_admin = TRUE AND role = 'customer'
+        """)
+        existing = db.fetchone("SELECT id FROM public.users WHERE email = %s", ('admin@gmail.com',))
+        if existing:
+            db.execute(
+                "UPDATE public.users SET password = %s, role = 'admin', is_admin = TRUE WHERE email = %s",
+                (generate_password_hash('admin123'), 'admin@gmail.com')
+            )
+        else:
+            db.execute(
+                "INSERT INTO public.users (email, password, role, is_admin) VALUES (%s, %s, 'admin', TRUE)",
+                ('admin@gmail.com', generate_password_hash('admin123'))
+            )
+    except Exception:
+        traceback.print_exc()
+
+
+with app.app_context():
+    _migrate()
 
 
 def valid_email(email):
@@ -35,9 +71,12 @@ def admin_logged_in():
 
 
 def admin_required():
+    if logged_in() and not admin_logged_in():
+        flash("Access denied. Admins only.", "error")
+        return redirect("/home")
     if not admin_logged_in():
-        flash("Admin access only. Please log in.", "error")
-        return redirect("/admin/login")
+        flash("Please log in to access the admin panel.", "error")
+        return redirect("/login")
     return None
 
 
@@ -74,32 +113,16 @@ def admin_register():
     return render_template("admin_register.html")
 
 
-@app.route("/admin/login", methods=["GET", "POST"])
-def admin_login():
-    if admin_logged_in():
-        return redirect("/admin")
-    if request.method == "POST":
-        email = request.form["email"].strip().lower()
-        try:
-            user = db.fetchone("SELECT * FROM public.users WHERE email = %s AND is_admin = TRUE", (email,))
-            if user and check_password_hash(user["password"], request.form["password"]):
-                session["admin"] = email
-                return redirect("/admin")
-            flash("Invalid credentials or not an admin.", "error")
-        except Exception:
-            traceback.print_exc()
-            flash("Login failed. Please try again.", "error")
-    return render_template("admin_login.html")
-
-
 @app.route("/admin/logout")
 def admin_logout():
     session.pop("admin", None)
-    return redirect("/admin/login")
+    return redirect("/login")
 
 
 @app.route("/")
 def landing():
+    if admin_logged_in():
+        return redirect("/admin")
     if logged_in():
         return redirect("/home")
     return render_template("landing.html")
@@ -107,19 +130,32 @@ def landing():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if admin_logged_in():
+        return redirect("/admin")
     if logged_in():
         return redirect("/home")
     if request.method == "POST":
         email = request.form["email"].strip().lower()
+        password = request.form["password"]
+        if not email or not password:
+            flash("Email and password are required.", "error")
+            return render_template("login.html")
         try:
-            # Fetch user by email; check_password_hash verifies the bcrypt hash
             user = db.fetchone("SELECT * FROM public.users WHERE email = %s", (email,))
-            if user and check_password_hash(user["password"], request.form["password"]):
-                session["user"] = email
-                return redirect("/home")
-            flash("Invalid email or password.", "error")
-        except Exception as e:
-            traceback.print_exc()  # full trace visible in server/Vercel logs
+            if not user:
+                flash("No account found with that email.", "error")
+                return render_template("login.html")
+            if not check_password_hash(user["password"], password):
+                flash("Incorrect password. Please try again.", "error")
+                return render_template("login.html")
+            role = user.get("role") or ("admin" if user.get("is_admin") else "customer")
+            if role == "admin":
+                session["admin"] = email
+                return redirect("/admin")
+            session["user"] = email
+            return redirect("/home")
+        except Exception:
+            traceback.print_exc()
             flash("Login failed. Please try again.", "error")
     return render_template("login.html")
 
@@ -128,12 +164,15 @@ def login():
 def register():
     email = ""
     if request.method == "POST":
-        email = request.form["email"].strip().lower()
-        password = request.form["password"]
+        full_name = request.form.get("full_name", "").strip()
+        phone     = request.form.get("phone", "").strip()
+        email     = request.form["email"].strip().lower()
+        password  = request.form["password"]
         confirm_password = request.form.get("confirm_password", "")
 
-        # ── Validation ────────────────────────────────
-        if not valid_email(email):
+        if not full_name:
+            flash("Full name is required.", "error")
+        elif not valid_email(email):
             flash("Please provide a valid email address.", "error")
         elif len(password) < 6:
             flash("Password must be at least 6 characters long.", "error")
@@ -141,22 +180,18 @@ def register():
             flash("Passwords do not match.", "error")
         else:
             try:
-                # ── Duplicate check ───────────────────
                 existing = db.fetchone("SELECT id FROM public.users WHERE email = %s", (email,))
                 if existing:
                     flash("Email already registered.", "error")
                     return render_template("register.html", email=email)
-
-                # ── Insert new user ───────────────────
-                # generate_password_hash uses pbkdf2:sha256 by default — never store plain text
                 db.execute(
-                    "INSERT INTO public.users (email, password) VALUES (%s, %s)",
-                    (email, generate_password_hash(password))
+                    "INSERT INTO public.users (full_name, phone, email, password, role) VALUES (%s, %s, %s, %s, 'customer')",
+                    (full_name, phone, email, generate_password_hash(password))
                 )
-                flash("Account created! Please log in.", "success")
-                return redirect("/")
-            except Exception as e:
-                traceback.print_exc()  # full trace visible in server/Vercel logs
+                flash("Account created successfully. Please login.", "success")
+                return redirect("/login")
+            except Exception:
+                traceback.print_exc()
                 flash("Registration failed. Please try again.", "error")
     return render_template("register.html", email=email)
 
@@ -170,6 +205,8 @@ def logout():
 
 @app.route("/home")
 def home():
+    if admin_logged_in():
+        return redirect("/admin")
     if not logged_in():
         return redirect("/")
     return render_template("index.html")
@@ -401,6 +438,8 @@ def profile():
 
 @app.route("/admin")
 def admin_dashboard():
+    if logged_in() and not admin_logged_in():
+        return redirect("/home")
     guard = admin_required()
     if guard: return guard
 
@@ -541,11 +580,12 @@ def admin_users():
     guard = admin_required()
     if guard: return guard
     users = db.fetchall("""
-        SELECT u.id, u.email, u.is_admin,
+        SELECT u.id, u.email,
+               COALESCE(u.role, CASE WHEN u.is_admin THEN 'admin' ELSE 'customer' END) AS role,
                COUNT(bookings.id) AS booking_count
         FROM public.users u
         LEFT JOIN bookings ON bookings.user_email = u.email
-        GROUP BY u.id, u.email, u.is_admin
+        GROUP BY u.id, u.email, u.role, u.is_admin
         ORDER BY u.id
     """)
     return render_template("admin_users.html", users=users)
