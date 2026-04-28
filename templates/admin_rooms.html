@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="admin-header">
+    <h2>🛏️ Manage Rooms</h2>
+    <div class="admin-nav">
+        <a href="/admin" class="admin-nav-btn">Dashboard</a>
+        <a href="/admin/bookings" class="admin-nav-btn">Bookings</a>
+        <a href="/admin/payments" class="admin-nav-btn">Payments</a>
+        <a href="/admin/rooms" class="admin-nav-btn active">Rooms</a>
+        <a href="/admin/users" class="admin-nav-btn">Users</a>
+        <a href="/admin/sql" class="admin-nav-btn">SQL Console</a>
+    </div>
+</div>
+
+<div class="admin-form-card">
+    <h3>Add New Room</h3>
+    <form method="POST" action="/admin/rooms/add" class="admin-add-form">
+        <input type="text" name="name" placeholder="Room name" required>
+        <input type="number" name="price" placeholder="Price per night" min="0" step="0.01" required>
+        <input type="text" name="description" placeholder="Description">
+        <input type="text" name="image" placeholder="Image URL">
+        <select name="category">
+            <option value="Standard">Standard</option>
+            <option value="Suite">Suite</option>
+            <option value="Luxury">Luxury</option>
+            <option value="Family">Family</option>
+        </select>
+        <button class="btn" type="submit">Add Room</button>
+    </form>
+</div>
+
+<div class="admin-table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Price / night</th>
+                <th>Description</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in rooms %}
+            <tr>
+                <td>{{ r.id }}</td>
+                <td>{{ r.name }}</td>
+                <td>{{ r.category }}</td>
+                <td>₱{{ "%.2f" | format(r.price | float) }}</td>
+                <td>{{ r.description or '—' }}</td>
+                <td>
+                    <form method="POST" action="/admin/rooms/delete/{{ r.id }}" onsubmit="return confirm('Delete this room?')">
+                        <button class="btn btn-danger admin-action-btn" type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

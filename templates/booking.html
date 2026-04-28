@@ -39,13 +39,36 @@
         <input type="date" name="checkout" required value="{{ checkout or '' }}">
 
         <label>Payment Method</label>
-        <select name="payment_method">
-            <option value="Cash" {% if payment_method == 'Cash' %}selected{% endif %}>Cash</option>
-            <option value="GCash" {% if payment_method == 'GCash' %}selected{% endif %}>GCash</option>
-            <option value="Visa" {% if payment_method == 'Visa' %}selected{% endif %}>Visa</option>
-            <option value="Mastercard" {% if payment_method == 'Mastercard' %}selected{% endif %}>Mastercard</option>
-            <option value="PayPal" {% if payment_method == 'PayPal' %}selected{% endif %}>PayPal</option>
-        </select>
+        <div class="payment-icons">
+            <label class="payment-option">
+                <input type="radio" name="payment_method" value="Cash" {% if payment_method == 'Cash' %}checked{% endif %}>
+                <span>💵 Cash</span>
+            </label>
+            <label class="payment-option">
+                <input type="radio" name="payment_method" value="GCash" {% if payment_method == 'GCash' %}checked{% endif %}>
+                <span>📱 GCash</span>
+            </label>
+            <label class="payment-option">
+                <input type="radio" name="payment_method" value="Maya" {% if payment_method == 'Maya' %}checked{% endif %}>
+                <span>🟢 Maya</span>
+            </label>
+            <label class="payment-option">
+                <input type="radio" name="payment_method" value="Visa" {% if payment_method == 'Visa' %}checked{% endif %}>
+                <span>💳 Visa</span>
+            </label>
+            <label class="payment-option">
+                <input type="radio" name="payment_method" value="Mastercard" {% if payment_method == 'Mastercard' %}checked{% endif %}>
+                <span>💳 Mastercard</span>
+            </label>
+            <label class="payment-option">
+                <input type="radio" name="payment_method" value="Credit Card" {% if payment_method == 'Credit Card' %}checked{% endif %}>
+                <span>🏦 Credit Card</span>
+            </label>
+            <label class="payment-option">
+                <input type="radio" name="payment_method" value="PayPal" {% if payment_method == 'PayPal' %}checked{% endif %}>
+                <span>🅿️ PayPal</span>
+            </label>
+        </div>
 
         <button class="btn btn-full" type="submit">Confirm Booking</button>
         <a href="/room/{{ room['id'] }}" class="btn btn-outline btn-full">Cancel</a>

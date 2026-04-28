@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="admin-header">
+    <h2>🖥️ SQL Console</h2>
+    <div class="admin-nav">
+        <a href="/admin" class="admin-nav-btn">Dashboard</a>
+        <a href="/admin/bookings" class="admin-nav-btn">Bookings</a>
+        <a href="/admin/payments" class="admin-nav-btn">Payments</a>
+        <a href="/admin/rooms" class="admin-nav-btn">Rooms</a>
+        <a href="/admin/users" class="admin-nav-btn">Users</a>
+        <a href="/admin/sql" class="admin-nav-btn active">SQL Console</a>
+    </div>
+</div>
+
+<div class="admin-form-card">
+    <form method="POST" action="/admin/sql">
+        <textarea name="query" rows="6" style="width:100%;font-family:monospace;font-size:14px;padding:10px;border-radius:6px;border:1px solid #ccc;resize:vertical;" placeholder="SELECT * FROM users LIMIT 10;">{{ query }}</textarea>
+        <button class="btn" type="submit" style="margin-top:10px;">Run Query</button>
+    </form>
+</div>
+
+{% if error %}
+<div style="background:#fdecea;color:#c0392b;padding:12px 16px;border-radius:6px;margin-top:16px;font-family:monospace;">
+    {{ error }}
+</div>
+{% endif %}
+
+{% if columns %}
+<div class="admin-table-wrap" style="margin-top:20px;">
+    <p style="font-size:13px;color:#888;">{{ results|length }} row(s) returned</p>
+    <table>
+        <thead>
+            <tr>
+                {% for col in columns %}
+                <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in results %}
+            <tr>
+                {% for cell in row %}
+                <td>{{ cell if cell is not none else 'NULL' }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% elif query and not error %}
+<p style="margin-top:16px;color:#888;">Query executed successfully. No rows returned.</p>
+{% endif %}
+
+{% endblock %}

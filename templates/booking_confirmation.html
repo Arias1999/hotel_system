@@ -8,15 +8,6 @@
     </div>
 </section>
 
-<div class="payment-method">
-    <button type="button" class="payment-toggle" data-target="confirmation-payment-details" onclick="togglePaymentDetails(event)">
-        Payment Method
-    </button>
-    <div class="payment-method-details" id="confirmation-payment-details" style="display:none;">
-        <p>Pay securely at the hotel reception upon arrival. Accepted methods: Cash, GCash, Visa, Mastercard, and PayPal.</p>
-    </div>
-</div>
-
 <div class="booking-card card">
     <div class="card-body">
         <div class="booking-header">
@@ -27,16 +18,28 @@
             <span class="booking-badge">{{ booking.nights }} night{{ "s" if booking.nights != 1 else "" }}</span>
         </div>
 
-        <p class="price">₱{{ "%.2f" | format(booking.room_price) }} <span>/ night</span></p>
+        <p class="price">₱{{ "%.2f" | format(booking.room_price | float) }} <span>/ night</span></p>
 
         <div class="booking-details">
             <p>👤 Booked by: <strong>{{ booking.user_email }}</strong></p>
-            <p>� Payment method: <strong>{{ booking.payment_method }}</strong></p>
-            <p>�📅 Check-in: <strong>{{ booking.checkin }}</strong></p>
+            <p>📅 Check-in: <strong>{{ booking.checkin }}</strong></p>
             <p>📅 Check-out: <strong>{{ booking.checkout }}</strong></p>
             {% if booking.nights > 0 %}
             <p>Total stay: <strong>{{ booking.nights }} night{{ "s" if booking.nights != 1 else "" }}</strong></p>
-            <p>Total price: <strong>₱{{ "%.2f" | format(booking.total) }}</strong></p>
+            <p>Total price: <strong>₱{{ "%.2f" | format(booking.total | float) }}</strong></p>
+            {% endif %}
+        </div>
+
+        <div class="payment-record">
+            <h4>💳 Payment Details</h4>
+            {% if booking.payment_id %}
+            <p>Payment #: <strong>#{{ booking.payment_id }}</strong></p>
+            {% endif %}
+            <p>Method: <strong>{{ booking.payment_method }}</strong></p>
+            <p>Amount: <strong>₱{{ "%.2f" | format(booking.amount | float) }}</strong></p>
+            <p>Status: <span class="payment-status-badge status-{{ booking.payment_status | lower }}">{{ booking.payment_status }}</span></p>
+            {% if booking.paid_at %}
+            <p>Date: <strong>{{ booking.paid_at.strftime('%B %d, %Y %I:%M %p') if booking.paid_at else '—' }}</strong></p>
             {% endif %}
         </div>
 
@@ -46,14 +49,5 @@
         </div>
     </div>
 </div>
-
-<script>
-    function togglePaymentDetails(event) {
-        const targetId = event.currentTarget.dataset.target;
-        const details = document.getElementById(targetId);
-        if (!details) return;
-        details.style.display = details.style.display === 'none' ? 'block' : 'none';
-    }
-</script>
 
 {% endblock %}

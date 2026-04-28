@@ -1,8 +1,12 @@
 from flask import Flask, render_template, request, redirect, session, flash
-import sqlite3
 import hashlib
 import os
 from datetime import datetime
+from dotenv import load_dotenv
+import db
+load_dotenv()
+
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "secret123")
@@ -10,68 +14,6 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
 )
-DB = "hotel.db"
-
-
-def get_db():
-    conn = sqlite3.connect(DB)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db():
-    with get_db() as conn:
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS rooms (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                price REAL NOT NULL,
-                description TEXT,
-                image TEXT,
-                category TEXT DEFAULT 'Standard'
-            );
-
-            CREATE TABLE IF NOT EXISTS bookings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_email TEXT NOT NULL,
-                room_id INTEGER NOT NULL,
-                checkin TEXT NOT NULL,
-                checkout TEXT NOT NULL,
-                payment_method TEXT DEFAULT 'Cash',
-                FOREIGN KEY (room_id) REFERENCES rooms(id)
-            );
-        """)
-
-        columns = [col["name"] for col in conn.execute("PRAGMA table_info(bookings)").fetchall()]
-        if "payment_method" not in columns:
-            conn.execute("ALTER TABLE bookings ADD COLUMN payment_method TEXT DEFAULT 'Cash'")
-
-        # Seed rooms if empty
-        count = conn.execute("SELECT COUNT(*) FROM rooms").fetchone()[0]
-        if count == 0:
-            conn.executemany(
-                "INSERT INTO rooms (name, price, description, image, category) VALUES (?, ?, ?, ?, ?)",
-                [
-                    ("Deluxe Room",        2500, "Spacious room with city view and a king-size bed.",          "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=600", "Standard"),
-                    ("Standard Room",      1500, "Comfortable room with all essential amenities.",             "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600", "Standard"),
-                    ("Ocean Suite",        5000, "Luxury suite with a private balcony and ocean view.",        "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=600", "Suite"),
-                    ("Family Room",        3500, "Large room with two beds, perfect for families.",            "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=600", "Family"),
-                    ("Presidential Suite", 9500, "Top-floor suite with panoramic views and butler service.",   "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600", "Suite"),
-                    ("Twin Room",          1800, "Two single beds ideal for friends or colleagues.",           "https://images.unsplash.com/photo-1595576508898-0ad5c879a061?w=600", "Standard"),
-                    ("Honeymoon Suite",    6500, "Romantic suite with jacuzzi and rose petal decor.",          "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=600", "Luxury"),
-                    ("Garden View Room",   2000, "Peaceful room overlooking the hotel garden.",                "https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?w=600", "Standard"),
-                    ("Business Room",      2200, "Equipped with work desk, fast Wi-Fi and city view.",         "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600", "Luxury"),
-                    ("Penthouse",         12000, "Exclusive penthouse with private pool and rooftop terrace.", "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=600", "Luxury"),
-                    ("Skyline Room",        2800, "Modern room with stunning skyline views and smart TV.",      "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=600", "Standard"),
-                    ("Royal Suite",         8000, "Opulent suite with antique furnishings and butler service.", "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=600", "Suite"),
-                ]
-            )
 
 
 def hash_password(password):
@@ -84,6 +26,20 @@ def valid_email(email):
 
 def logged_in():
     return "user" in session
+
+
+def is_admin():
+    if not logged_in():
+        return False
+    user = db.fetchone("SELECT is_admin FROM users WHERE email = %s", (session["user"],))
+    return user and user["is_admin"]
+
+
+def admin_required():
+    if not is_admin():
+        flash("Access denied.", "error")
+        return redirect("/home")
+    return None
 
 
 # ── AUTH ──────────────────────────────────────────────
@@ -102,12 +58,12 @@ def login():
     if request.method == "POST":
         email = request.form["email"]
         password = hash_password(request.form["password"])
-        with get_db() as conn:
-            user = conn.execute(
-                "SELECT * FROM users WHERE email = ? AND password = ?", (email, password)
-            ).fetchone()
+        user = db.fetchone(
+            "SELECT * FROM users WHERE email = %s AND password = %s", (email, password)
+        )
         if user:
             session["user"] = email
+            session["is_admin"] = bool(user["is_admin"])
             return redirect("/home")
         flash("Invalid email or password.", "error")
     return render_template("login.html")
@@ -129,18 +85,17 @@ def register():
             flash("Passwords do not match.", "error")
         else:
             hashed_password = hash_password(password)
-            try:
-                with get_db() as conn:
-                    conn.execute(
-                        "INSERT INTO users (email, password) VALUES (?, ?)", (email, hashed_password)
-                    )
-                flash("Account created! Please log in.", "success")
-                return redirect("/")
-            except sqlite3.IntegrityError:
+            existing = db.fetchone("SELECT id FROM users WHERE email = %s", (email,))
+            if existing:
                 flash("Email already registered.", "error")
                 return render_template("register.html", email=email)
+            db.execute(
+                "INSERT INTO users (email, password) VALUES (%s, %s)", (email, hashed_password)
+            )
+            flash("Account created! Please log in.", "success")
+            return redirect("/")
 
-    return render_template("register.html")
+    return render_template("register.html", email=email)
 
 
 @app.route("/logout")
@@ -163,13 +118,12 @@ def rooms():
     if not logged_in():
         return redirect("/")
     category = request.args.get("category", "All")
-    with get_db() as conn:
-        if category == "All":
-            rooms = conn.execute("SELECT * FROM rooms").fetchall()
-        else:
-            rooms = conn.execute("SELECT * FROM rooms WHERE category = ?", (category,)).fetchall()
-        categories = [r["category"] for r in conn.execute("SELECT DISTINCT category FROM rooms").fetchall()]
-    return render_template("rooms.html", rooms=rooms, categories=categories, active_category=category)
+    if category == "All":
+        rooms_list = db.fetchall("SELECT * FROM rooms")
+    else:
+        rooms_list = db.fetchall("SELECT * FROM rooms WHERE category = %s", (category,))
+    categories = [r["category"] for r in db.fetchall("SELECT DISTINCT category FROM rooms")]
+    return render_template("rooms.html", rooms=rooms_list, categories=categories, active_category=category)
 
 
 @app.route("/about")
@@ -186,21 +140,19 @@ def contact():
 def room_detail(room_id):
     if not logged_in():
         return redirect("/register")
-    with get_db() as conn:
-        room = conn.execute("SELECT * FROM rooms WHERE id = ?", (room_id,)).fetchone()
-        rooms = conn.execute("SELECT * FROM rooms").fetchall()
-        categories = [r["category"] for r in conn.execute("SELECT DISTINCT category FROM rooms").fetchall()]
+    room = db.fetchone("SELECT * FROM rooms WHERE id = %s", (room_id,))
     if not room:
         return redirect("/rooms")
-    return render_template("room_detail.html", room=room, rooms=rooms, categories=categories, active_category="All")
+    rooms_list = db.fetchall("SELECT * FROM rooms")
+    categories = [r["category"] for r in db.fetchall("SELECT DISTINCT category FROM rooms")]
+    return render_template("room_detail.html", room=room, rooms=rooms_list, categories=categories, active_category="All")
 
 
 @app.route("/book/<int:room_id>", methods=["GET", "POST"])
 def book(room_id):
     if not logged_in():
         return redirect("/")
-    with get_db() as conn:
-        room = conn.execute("SELECT * FROM rooms WHERE id = ?", (room_id,)).fetchone()
+    room = db.fetchone("SELECT * FROM rooms WHERE id = %s", (room_id,))
     if not room:
         flash("Room not found.", "error")
         return redirect("/rooms")
@@ -208,6 +160,7 @@ def book(room_id):
     checkin = ""
     checkout = ""
     payment_method = "Cash"
+
     if request.method == "POST":
         checkin = request.form.get("checkin", "")
         checkout = request.form.get("checkout", "")
@@ -215,77 +168,65 @@ def book(room_id):
 
         if not checkin or not checkout:
             flash("Please select both check-in and check-out dates.", "error")
-            return render_template(
-                "booking.html",
-                room=room,
-                checkin=checkin,
-                checkout=checkout,
-                payment_method=payment_method,
-            )
+            return render_template("booking.html", room=room, checkin=checkin, checkout=checkout, payment_method=payment_method)
 
         if checkin >= checkout:
             flash("Check-out date must be after check-in date.", "error")
-            return render_template(
-                "booking.html",
-                room=room,
-                checkin=checkin,
-                checkout=checkout,
-                payment_method=payment_method,
-            )
+            return render_template("booking.html", room=room, checkin=checkin, checkout=checkout, payment_method=payment_method)
 
-        valid_methods = ["Cash", "GCash", "Visa", "Mastercard", "PayPal"]
+        valid_methods = ["Cash", "GCash", "Visa", "Mastercard", "PayPal", "Maya", "Credit Card"]
         if payment_method not in valid_methods:
             payment_method = "Cash"
 
-        with get_db() as conn:
-            conflict = conn.execute(
-                "SELECT 1 FROM bookings WHERE room_id = ? AND NOT (checkout <= ? OR checkin >= ?)",
-                (room_id, checkin, checkout)
-            ).fetchone()
-            if conflict:
-                flash("This room is already booked for the selected dates. Please choose another date range.", "error")
-                return render_template(
-                    "booking.html",
-                    room=room,
-                    checkin=checkin,
-                    checkout=checkout,
-                    payment_method=payment_method,
-                )
+        conflict = db.fetchone(
+            "SELECT 1 FROM bookings WHERE room_id = %s AND NOT (checkout <= %s OR checkin >= %s)",
+            (room_id, checkin, checkout)
+        )
+        if conflict:
+            flash("This room is already booked for the selected dates. Please choose another date range.", "error")
+            return render_template("booking.html", room=room, checkin=checkin, checkout=checkout, payment_method=payment_method)
 
-            cursor = conn.execute(
-                "INSERT INTO bookings (user_email, room_id, checkin, checkout, payment_method) VALUES (?, ?, ?, ?, ?)",
-                (session["user"], room_id, checkin, checkout, payment_method)
-            )
-            booking_id = cursor.lastrowid
+        booking = db.execute_returning(
+            "INSERT INTO bookings (user_email, room_id, checkin, checkout, payment_method, payment_status) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+            (session["user"], room_id, checkin, checkout, payment_method, "Pending")
+        )
 
+        try:
+            checkin_dt = datetime.fromisoformat(checkin)
+            checkout_dt = datetime.fromisoformat(checkout)
+            nights = max((checkout_dt - checkin_dt).days, 0)
+            amount = float(room["price"]) * nights
+        except Exception:
+            amount = 0
+
+        db.execute(
+            "INSERT INTO payments (booking_id, user_email, amount, payment_method, payment_status) VALUES (%s, %s, %s, %s, %s)",
+            (booking["id"], session["user"], amount, payment_method, "Pending")
+        )
         flash("Booking confirmed!", "success")
-        return redirect(f"/booking-confirmation/{booking_id}")
+        return redirect(f"/booking-confirmation/{booking['id']}")
 
-    return render_template(
-        "booking.html",
-        room=room,
-        checkin=checkin,
-        checkout=checkout,
-        payment_method=payment_method,
-    )
+    return render_template("booking.html", room=room, checkin=checkin, checkout=checkout, payment_method=payment_method)
 
 
 @app.route("/booking-confirmation/<int:booking_id>")
 def booking_confirmation(booking_id):
     if not logged_in():
         return redirect("/")
-    with get_db() as conn:
-        booking = conn.execute(
-            """
-            SELECT bookings.id, bookings.checkin, bookings.checkout, bookings.user_email, bookings.payment_method,
-                   rooms.name AS room_name, rooms.price AS room_price
-            FROM bookings
-            JOIN rooms ON bookings.room_id = rooms.id
-            WHERE bookings.id = ? AND bookings.user_email = ?
-            """,
-            (booking_id, session["user"])
-        ).fetchone()
-
+    booking = db.fetchone(
+        """
+        SELECT bookings.id, bookings.checkin, bookings.checkout, bookings.user_email,
+               bookings.payment_method, bookings.payment_status,
+               rooms.name AS room_name, rooms.price AS room_price,
+               payments.id AS payment_id, payments.amount, payments.payment_status AS pay_status,
+               payments.payment_method AS pay_method, payments.paid_at
+        FROM bookings
+        JOIN rooms ON bookings.room_id = rooms.id
+        LEFT JOIN payments ON payments.booking_id = bookings.id
+        WHERE bookings.id = %s AND bookings.user_email = %s
+        """,
+        (booking_id, session["user"])
+    )
     if not booking:
         flash("Booking not found.", "error")
         return redirect("/my-bookings")
@@ -296,38 +237,45 @@ def booking_confirmation(booking_id):
         checkin_date = datetime.fromisoformat(booking["checkin"])
         checkout_date = datetime.fromisoformat(booking["checkout"])
         nights = max((checkout_date - checkin_date).days, 0)
-        total = booking["room_price"] * nights
+        total = float(booking["room_price"]) * nights
     except Exception:
         pass
 
-    return render_template(
-        "booking_confirmation.html",
-        booking={
-            "id": booking["id"],
-            "room_name": booking["room_name"],
-            "room_price": booking["room_price"],
-            "checkin": booking["checkin"],
-            "checkout": booking["checkout"],
-            "user_email": booking["user_email"],
-            "payment_method": booking["payment_method"],
-            "nights": nights,
-            "total": total,
-        }
-    )
+    return render_template("booking_confirmation.html", booking={
+        "id": booking["id"],
+        "room_name": booking["room_name"],
+        "room_price": booking["room_price"],
+        "checkin": booking["checkin"],
+        "checkout": booking["checkout"],
+        "user_email": booking["user_email"],
+        "payment_method": booking["pay_method"] or booking["payment_method"],
+        "payment_status": booking["pay_status"] or booking["payment_status"] or "Pending",
+        "payment_id": booking["payment_id"],
+        "amount": booking["amount"] or total,
+        "paid_at": booking["paid_at"],
+        "nights": nights,
+        "total": total,
+    })
 
 
 @app.route("/my-bookings")
 def my_bookings():
     if not logged_in():
         return redirect("/")
-    with get_db() as conn:
-        rows = conn.execute("""
-            SELECT bookings.id, rooms.name, rooms.price, bookings.checkin, bookings.checkout, bookings.payment_method
-            FROM bookings
-            JOIN rooms ON bookings.room_id = rooms.id
-            WHERE bookings.user_email = ?
-            ORDER BY bookings.checkin DESC
-        """, (session["user"],)).fetchall()
+    rows = db.fetchall(
+        """
+        SELECT bookings.id, rooms.name, rooms.price, bookings.checkin, bookings.checkout,
+               bookings.payment_method, bookings.payment_status,
+               payments.id AS payment_id, payments.amount, payments.payment_status AS pay_status,
+               payments.payment_method AS pay_method, payments.paid_at
+        FROM bookings
+        JOIN rooms ON bookings.room_id = rooms.id
+        LEFT JOIN payments ON payments.booking_id = bookings.id
+        WHERE bookings.user_email = %s
+        ORDER BY bookings.checkin DESC
+        """,
+        (session["user"],)
+    )
 
     bookings = []
     for row in rows:
@@ -337,17 +285,20 @@ def my_bookings():
             checkin_date = datetime.fromisoformat(row["checkin"])
             checkout_date = datetime.fromisoformat(row["checkout"])
             nights = max((checkout_date - checkin_date).days, 0)
-            total = row["price"] * nights
+            total = float(row["price"]) * nights
         except Exception:
             pass
-
         bookings.append({
             "id": row["id"],
             "name": row["name"],
             "price": row["price"],
             "checkin": row["checkin"],
             "checkout": row["checkout"],
-            "payment_method": row["payment_method"],
+            "payment_method": row["pay_method"] or row["payment_method"],
+            "payment_status": row["pay_status"] or row["payment_status"] or "Pending",
+            "payment_id": row["payment_id"],
+            "amount": float(row["amount"]) if row["amount"] else total,
+            "paid_at": row["paid_at"],
             "nights": nights,
             "total": total,
         })
@@ -359,11 +310,10 @@ def my_bookings():
 def cancel(booking_id):
     if not logged_in():
         return redirect("/")
-    with get_db() as conn:
-        conn.execute(
-            "DELETE FROM bookings WHERE id = ? AND user_email = ?",
-            (booking_id, session["user"])
-        )
+    db.execute(
+        "DELETE FROM bookings WHERE id = %s AND user_email = %s",
+        (booking_id, session["user"])
+    )
     flash("Booking cancelled.", "success")
     return redirect("/my-bookings")
 
@@ -372,8 +322,7 @@ def cancel(booking_id):
 def settings():
     if not logged_in():
         return redirect("/")
-    user_email = session["user"]
-    return render_template("settings.html", user_email=user_email)
+    return render_template("settings.html", user_email=session["user"])
 
 
 @app.route("/profile")
@@ -381,14 +330,170 @@ def profile():
     if not logged_in():
         return redirect("/")
     user_email = session["user"]
-    with get_db() as conn:
-        booking_count = conn.execute(
-            "SELECT COUNT(*) FROM bookings WHERE user_email = ?", (user_email,)
-        ).fetchone()[0]
-        room_count = conn.execute("SELECT COUNT(*) FROM rooms").fetchone()[0]
+    booking_count = db.fetchone("SELECT COUNT(*) AS c FROM bookings WHERE user_email = %s", (user_email,))["c"]
+    room_count = db.fetchone("SELECT COUNT(*) AS c FROM rooms")["c"]
     return render_template("profile.html", user_email=user_email, booking_count=booking_count, room_count=room_count)
 
 
+# ── ADMIN ─────────────────────────────────────────────
+
+@app.route("/admin")
+def admin_dashboard():
+    guard = admin_required()
+    if guard: return guard
+
+    total_users    = db.fetchone("SELECT COUNT(*) AS c FROM users")["c"]
+    total_rooms    = db.fetchone("SELECT COUNT(*) AS c FROM rooms")["c"]
+    total_bookings = db.fetchone("SELECT COUNT(*) AS c FROM bookings")["c"]
+    total_revenue  = db.fetchone("SELECT COALESCE(SUM(amount),0) AS c FROM payments WHERE payment_status = 'Paid'")["c"]
+    pending_payments = db.fetchone("SELECT COUNT(*) AS c FROM payments WHERE payment_status = 'Pending'")["c"]
+    recent_bookings = db.fetchall("""
+        SELECT bookings.id, bookings.user_email, rooms.name AS room_name,
+               bookings.checkin, bookings.checkout, bookings.payment_status
+        FROM bookings
+        JOIN rooms ON bookings.room_id = rooms.id
+        ORDER BY bookings.id DESC LIMIT 5
+    """)
+    return render_template("admin_dashboard.html",
+        total_users=total_users, total_rooms=total_rooms,
+        total_bookings=total_bookings, total_revenue=total_revenue,
+        pending_payments=pending_payments, recent_bookings=recent_bookings
+    )
+
+
+@app.route("/admin/bookings")
+def admin_bookings():
+    guard = admin_required()
+    if guard: return guard
+    rows = db.fetchall("""
+        SELECT bookings.id, bookings.user_email, rooms.name AS room_name,
+               bookings.checkin, bookings.checkout,
+               bookings.payment_method, bookings.payment_status,
+               payments.amount, payments.payment_status AS pay_status
+        FROM bookings
+        JOIN rooms ON bookings.room_id = rooms.id
+        LEFT JOIN payments ON payments.booking_id = bookings.id
+        ORDER BY bookings.id DESC
+    """)
+    return render_template("admin_bookings.html", bookings=rows)
+
+
+@app.route("/admin/bookings/delete/<int:booking_id>", methods=["POST"])
+def admin_delete_booking(booking_id):
+    guard = admin_required()
+    if guard: return guard
+    db.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
+    flash("Booking deleted.", "success")
+    return redirect("/admin/bookings")
+
+
+@app.route("/admin/payments")
+def admin_payments():
+    guard = admin_required()
+    if guard: return guard
+    rows = db.fetchall("""
+        SELECT payments.id, payments.booking_id, payments.user_email,
+               payments.amount, payments.payment_method, payments.payment_status, payments.paid_at,
+               rooms.name AS room_name
+        FROM payments
+        JOIN bookings ON bookings.id = payments.booking_id
+        JOIN rooms ON rooms.id = bookings.room_id
+        ORDER BY payments.id DESC
+    """)
+    return render_template("admin_payments.html", payments=rows)
+
+
+@app.route("/admin/payments/update/<int:payment_id>", methods=["POST"])
+def admin_update_payment(payment_id):
+    guard = admin_required()
+    if guard: return guard
+    status = request.form.get("status", "Pending")
+    if status not in ["Pending", "Paid", "Cancelled"]:
+        status = "Pending"
+    db.execute("UPDATE payments SET payment_status = %s WHERE id = %s", (status, payment_id))
+    db.execute("""
+        UPDATE bookings SET payment_status = %s
+        WHERE id = (SELECT booking_id FROM payments WHERE id = %s)
+    """, (status, payment_id))
+    flash("Payment status updated.", "success")
+    return redirect("/admin/payments")
+
+
+@app.route("/admin/rooms")
+def admin_rooms():
+    guard = admin_required()
+    if guard: return guard
+    rooms_list = db.fetchall("SELECT * FROM rooms ORDER BY id")
+    return render_template("admin_rooms.html", rooms=rooms_list)
+
+
+@app.route("/admin/rooms/add", methods=["POST"])
+def admin_add_room():
+    guard = admin_required()
+    if guard: return guard
+    name        = request.form.get("name", "").strip()
+    price       = request.form.get("price", 0)
+    description = request.form.get("description", "").strip()
+    image       = request.form.get("image", "").strip()
+    category    = request.form.get("category", "Standard").strip()
+    if name and price:
+        db.execute(
+            "INSERT INTO rooms (name, price, description, image, category) VALUES (%s, %s, %s, %s, %s)",
+            (name, float(price), description, image, category)
+        )
+        flash("Room added.", "success")
+    return redirect("/admin/rooms")
+
+
+@app.route("/admin/rooms/delete/<int:room_id>", methods=["POST"])
+def admin_delete_room(room_id):
+    guard = admin_required()
+    if guard: return guard
+    db.execute("DELETE FROM rooms WHERE id = %s", (room_id,))
+    flash("Room deleted.", "success")
+    return redirect("/admin/rooms")
+
+
+@app.route("/admin/users")
+def admin_users():
+    guard = admin_required()
+    if guard: return guard
+    users = db.fetchall("""
+        SELECT users.id, users.email, users.is_admin,
+               COUNT(bookings.id) AS booking_count
+        FROM users
+        LEFT JOIN bookings ON bookings.user_email = users.email
+        GROUP BY users.id, users.email, users.is_admin
+        ORDER BY users.id
+    """)
+    return render_template("admin_users.html", users=users)
+
+
+@app.route("/admin/users/delete/<int:user_id>", methods=["POST"])
+def admin_delete_user(user_id):
+    guard = admin_required()
+    if guard: return guard
+    db.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    flash("User deleted.", "success")
+    return redirect("/admin/users")
+
+
+@app.route("/admin/sql", methods=["GET", "POST"])
+def admin_sql():
+    guard = admin_required()
+    if guard: return guard
+    results, columns, error, query = [], [], None, ""
+    if request.method == "POST":
+        query = request.form.get("query", "").strip()
+        try:
+            rows = db.fetchall(query)
+            if rows:
+                columns = list(rows[0].keys())
+                results = [list(r.values()) for r in rows]
+        except Exception as e:
+            error = str(e)
+    return render_template("admin_sql.html", query=query, columns=columns, results=results, error=error)
+
+
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True)

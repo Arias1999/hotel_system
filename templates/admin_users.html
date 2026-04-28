@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="admin-header">
+    <h2>👥 Manage Users</h2>
+    <div class="admin-nav">
+        <a href="/admin" class="admin-nav-btn">Dashboard</a>
+        <a href="/admin/bookings" class="admin-nav-btn">Bookings</a>
+        <a href="/admin/payments" class="admin-nav-btn">Payments</a>
+        <a href="/admin/rooms" class="admin-nav-btn">Rooms</a>
+        <a href="/admin/users" class="admin-nav-btn active">Users</a>
+        <a href="/admin/sql" class="admin-nav-btn">SQL Console</a>
+    </div>
+</div>
+
+<div class="admin-table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Bookings</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>{{ u.id }}</td>
+                <td>{{ u.email }}</td>
+                <td>
+                    {% if u.is_admin %}
+                        <span class="admin-badge">Admin</span>
+                    {% else %}
+                        <span class="user-badge">User</span>
+                    {% endif %}
+                </td>
+                <td>{{ u.booking_count }}</td>
+                <td>
+                    {% if not u.is_admin %}
+                    <form method="POST" action="/admin/users/delete/{{ u.id }}" onsubmit="return confirm('Delete this user?')">
+                        <button class="btn btn-danger admin-action-btn" type="submit">Delete</button>
+                    </form>
+                    {% else %}
+                    <span style="color:#6a5a4a;font-size:13px;">Protected</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

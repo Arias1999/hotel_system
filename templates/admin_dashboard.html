@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="admin-header">
+    <h2>⚙️ Admin Dashboard</h2>
+    <div class="admin-nav">
+        <a href="/admin" class="admin-nav-btn active">Dashboard</a>
+        <a href="/admin/bookings" class="admin-nav-btn">Bookings</a>
+        <a href="/admin/payments" class="admin-nav-btn">Payments</a>
+        <a href="/admin/rooms" class="admin-nav-btn">Rooms</a>
+        <a href="/admin/users" class="admin-nav-btn">Users</a>
+        <a href="/admin/sql" class="admin-nav-btn">SQL Console</a>
+    </div>
+</div>
+
+<div class="admin-stats">
+    <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-info">
+            <p class="stat-value">{{ total_users }}</p>
+            <p class="stat-label">Total Users</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">🛏️</div>
+        <div class="stat-info">
+            <p class="stat-value">{{ total_rooms }}</p>
+            <p class="stat-label">Total Rooms</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-info">
+            <p class="stat-value">{{ total_bookings }}</p>
+            <p class="stat-label">Total Bookings</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-info">
+            <p class="stat-value">₱{{ "%.2f" | format(total_revenue | float) }}</p>
+            <p class="stat-label">Total Revenue</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-info">
+            <p class="stat-value">{{ pending_payments }}</p>
+            <p class="stat-label">Pending Payments</p>
+        </div>
+    </div>
+</div>
+
+<h2 style="margin-top:36px;">Recent Bookings</h2>
+<div class="admin-table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Guest</th>
+                <th>Room</th>
+                <th>Check-in</th>
+                <th>Check-out</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for b in recent_bookings %}
+            <tr>
+                <td>{{ b.id }}</td>
+                <td>{{ b.user_email }}</td>
+                <td>{{ b.room_name }}</td>
+                <td>{{ b.checkin }}</td>
+                <td>{{ b.checkout }}</td>
+                <td><span class="payment-status-badge status-{{ (b.payment_status or 'pending') | lower }}">{{ b.payment_status or 'Pending' }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

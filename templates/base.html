@@ -24,6 +24,10 @@
                     <a href="/profile" class="dropdown-item">👤 My Profile</a>
                     <a href="/settings" class="dropdown-item">⚙️ Settings</a>
                     <hr>
+                    {% if session.get('is_admin') %}
+                    <a href="/admin" class="dropdown-item">🛠️ Admin Dashboard</a>
+                    <hr>
+                    {% endif %}
                     <a href="/logout" class="dropdown-item">🚪 Logout</a>
                 </div>
             </div>

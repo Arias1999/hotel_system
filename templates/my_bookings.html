@@ -26,7 +26,11 @@
             <div class="booking-details">
                 <p>📅 Check-in: <strong>{{ b["checkin"] }}</strong></p>
                 <p>📅 Check-out: <strong>{{ b["checkout"] }}</strong></p>
-                <p>💳 Payment method: <strong>{{ b["payment_method"] or 'Cash' }}</strong></p>
+                <p>💳 Payment: <strong>{{ b["payment_method"] or 'Cash' }}</strong></p>
+                <p>🔖 Payment status: <span class="payment-status-badge status-{{ (b['payment_status'] or 'pending') | lower }}">{{ b["payment_status"] or 'Pending' }}</span></p>
+                {% if b["payment_id"] %}
+                <p>💰 Amount paid: <strong>₱{{ "%.2f" | format(b["amount"] | float) }}</strong></p>
+                {% endif %}
                 {% if b["nights"] > 0 %}
                 <p>Total stay: <strong>{{ b["nights"] }} night{{ "s" if b["nights"] != 1 else "" }}</strong></p>
                 <p>Total price: <strong>₱{{ "%.2f" | format(b["total"]) }}</strong></p>

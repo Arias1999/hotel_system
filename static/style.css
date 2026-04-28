@@ -1099,3 +1099,262 @@ footer {
 .footer-links a:hover {
     color: #c9a84c;
 }
+
+/* ── PAYMENT OPTIONS ── */
+.payment-icons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.payment-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #1e1e2e;
+    border: 1px solid #3e3e52;
+    border-radius: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #e8e0d0;
+    transition: border-color 0.2s, background 0.2s;
+    user-select: none;
+}
+
+.payment-option input[type="radio"] {
+    accent-color: #c9a84c;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.payment-option:has(input:checked) {
+    border-color: #c9a84c;
+    background: #2a2a1e;
+}
+
+.payment-option:hover {
+    border-color: #c9a84c88;
+}
+
+/* ── PAYMENT STATUS BADGE ── */
+.payment-status-badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.status-pending {
+    background: #3a3010;
+    color: #f0c040;
+    border: 1px solid #c9a84c55;
+}
+
+.status-paid {
+    background: #1e3a2a;
+    color: #7ecf9e;
+    border: 1px solid #3a6e5a;
+}
+
+.status-cancelled {
+    background: #3a1e1e;
+    color: #cf9e9e;
+    border: 1px solid #6e3a3a;
+}
+
+/* ── PAYMENT RECORD ── */
+.payment-record {
+    background: #1e1e2e;
+    border: 1px solid #c9a84c33;
+    border-radius: 12px;
+    padding: 18px;
+    margin-top: 20px;
+    margin-bottom: 8px;
+}
+
+.payment-record h4 {
+    font-family: 'Playfair Display', serif;
+    color: #c9a84c;
+    margin-bottom: 12px;
+    font-size: 16px;
+}
+
+.payment-record p {
+    font-size: 14px;
+    color: #d0c8b8;
+    margin-bottom: 8px;
+}
+
+/* ── ADMIN ── */
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.admin-header h2 {
+    margin-bottom: 0;
+}
+
+.admin-nav {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.admin-nav-btn {
+    padding: 8px 18px;
+    border-radius: 20px;
+    border: 1px solid #c9a84c55;
+    color: #b0a090;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    background: #252538;
+    transition: all 0.2s;
+}
+
+.admin-nav-btn:hover,
+.admin-nav-btn.active {
+    background: linear-gradient(135deg, #c9a84c, #a07830);
+    color: #1e1e2e;
+    border-color: transparent;
+    font-weight: 600;
+}
+
+.admin-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 32px;
+}
+
+.stat-card {
+    flex: 1 1 160px;
+    background: #252538;
+    border: 1px solid #35354a;
+    border-radius: 14px;
+    padding: 22px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+}
+
+.stat-card:hover {
+    border-color: #c9a84c44;
+    transform: translateY(-3px);
+}
+
+.stat-icon {
+    font-size: 32px;
+}
+
+.stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #c9a84c;
+    margin-bottom: 2px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #7a6a5a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-table-wrap {
+    overflow-x: auto;
+    margin-bottom: 32px;
+}
+
+.admin-action-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    margin-top: 0;
+    display: inline-block;
+    width: auto;
+}
+
+.admin-status-form {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.admin-select {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #3e3e52;
+    background: #1e1e2e;
+    color: #e8e0d0;
+    font-size: 13px;
+}
+
+.admin-form-card {
+    background: #252538;
+    border: 1px solid #35354a;
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 28px;
+}
+
+.admin-form-card h3 {
+    font-family: 'Playfair Display', serif;
+    color: #c9a84c;
+    margin-bottom: 16px;
+    font-size: 18px;
+}
+
+.admin-add-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.admin-add-form input,
+.admin-add-form select {
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #3e3e52;
+    background: #1e1e2e;
+    color: #e8e0d0;
+    font-size: 14px;
+    flex: 1 1 160px;
+}
+
+.admin-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #c9a84c, #a07830);
+    color: #1e1e2e;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.user-badge {
+    display: inline-block;
+    background: #2a2a3e;
+    color: #9a8a7a;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
