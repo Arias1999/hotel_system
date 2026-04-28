@@ -452,6 +452,40 @@ nav {
     box-shadow: 0 0 0 3px rgba(201,168,76,0.14);
 }
 
+.password-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.password-wrap input {
+    margin-top: 0;
+    padding-right: 46px;
+    width: 100%;
+}
+
+.eye-btn {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #8a7a6a;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    line-height: 1;
+}
+
+.eye-btn:hover {
+    color: #c9a84c;
+}
+
 .btn-full {
     display: inline-block;
     width: 100%;
