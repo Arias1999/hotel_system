@@ -1,9 +1,15 @@
-from flask import Flask, render_template, request, redirect, session, flash
+# app.py — Main Flask application for hotel_system
+# Connects to PostgreSQL (Supabase) via db.py.
+# ENV variable controls which DB URL is used (local vs production).
+
 import os
+import traceback
 from datetime import datetime
 from dotenv import load_dotenv
+from flask import Flask, render_template, request, redirect, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 import db
+
 load_dotenv()
 
 
@@ -53,12 +59,17 @@ def login():
         return redirect("/home")
     if request.method == "POST":
         email = request.form["email"].strip().lower()
-        user = db.fetchone("SELECT * FROM users WHERE email = %s", (email,))
-        if user and check_password_hash(user["password"], request.form["password"]):
-            session["user"] = email
-            session["is_admin"] = bool(user["is_admin"])
-            return redirect("/home")
-        flash("Invalid email or password.", "error")
+        try:
+            # Fetch user by email; check_password_hash verifies the bcrypt hash
+            user = db.fetchone("SELECT * FROM users WHERE email = %s", (email,))
+            if user and check_password_hash(user["password"], request.form["password"]):
+                session["user"] = email
+                session["is_admin"] = bool(user["is_admin"])
+                return redirect("/home")
+            flash("Invalid email or password.", "error")
+        except Exception as e:
+            traceback.print_exc()  # full trace visible in server/Vercel logs
+            flash("Login failed. Please try again.", "error")
     return render_template("login.html")
 
 
@@ -70,6 +81,7 @@ def register():
         password = request.form["password"]
         confirm_password = request.form.get("confirm_password", "")
 
+        # ── Validation ────────────────────────────────
         if not valid_email(email):
             flash("Please provide a valid email address.", "error")
         elif len(password) < 6:
@@ -77,16 +89,24 @@ def register():
         elif password != confirm_password:
             flash("Passwords do not match.", "error")
         else:
-            existing = db.fetchone("SELECT id FROM users WHERE email = %s", (email,))
-            if existing:
-                flash("Email already registered.", "error")
-                return render_template("register.html", email=email)
-            db.execute(
-                "INSERT INTO users (email, password) VALUES (%s, %s)",
-                (email, generate_password_hash(password))
-            )
-            flash("Account created! Please log in.", "success")
-            return redirect("/")
+            try:
+                # ── Duplicate check ───────────────────
+                existing = db.fetchone("SELECT id FROM users WHERE email = %s", (email,))
+                if existing:
+                    flash("Email already registered.", "error")
+                    return render_template("register.html", email=email)
+
+                # ── Insert new user ───────────────────
+                # generate_password_hash uses pbkdf2:sha256 by default — never store plain text
+                db.execute(
+                    "INSERT INTO users (email, password) VALUES (%s, %s)",
+                    (email, generate_password_hash(password))
+                )
+                flash("Account created! Please log in.", "success")
+                return redirect("/")
+            except Exception as e:
+                traceback.print_exc()  # full trace visible in server/Vercel logs
+                flash("Registration failed. Please try again.", "error")
     return render_template("register.html", email=email)
 
 @app.route("/logout")
