@@ -20,7 +20,8 @@ load_dotenv()
 _DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 if not _DATABASE_URL:
-    raise RuntimeError("DATABASE_URL environment variable is not set.")
+    import sys
+    print("ERROR: DATABASE_URL environment variable is not set.", file=sys.stderr)
 
 # Append sslmode=require — Supabase rejects unencrypted connections
 # sslmode=require — Supabase rejects unencrypted connections

@@ -10,6 +10,7 @@
         <a href="/admin/rooms" class="admin-nav-btn">Rooms</a>
         <a href="/admin/users" class="admin-nav-btn">Users</a>
         <a href="/admin/sql" class="admin-nav-btn">SQL Console</a>
+        <a href="/admin/logout" class="admin-nav-btn" style="margin-left:auto;color:#e74c3c;">Logout</a>
     </div>
 </div>
 
@@ -39,7 +40,17 @@
                 <td>{{ b.payment_method or '—' }}</td>
                 <td>{% if b.amount %}₱{{ "%.2f" | format(b.amount | float) }}{% else %}—{% endif %}</td>
                 <td><span class="payment-status-badge status-{{ (b.pay_status or b.payment_status or 'pending') | lower }}">{{ b.pay_status or b.payment_status or 'Pending' }}</span></td>
-                <td>
+                <td style="display:flex;gap:6px;flex-wrap:wrap;">
+                    {% if (b.pay_status or b.payment_status) != 'Paid' %}
+                    <form method="POST" action="/admin/bookings/confirm/{{ b.id }}">
+                        <button class="btn btn-success admin-action-btn" type="submit">Confirm</button>
+                    </form>
+                    {% endif %}
+                    {% if (b.pay_status or b.payment_status) not in ['Cancelled', 'Paid'] %}
+                    <form method="POST" action="/admin/bookings/reject/{{ b.id }}">
+                        <button class="btn btn-warning admin-action-btn" type="submit">Reject</button>
+                    </form>
+                    {% endif %}
                     <form method="POST" action="/admin/bookings/delete/{{ b.id }}" onsubmit="return confirm('Delete this booking?')">
                         <button class="btn btn-danger admin-action-btn" type="submit">Delete</button>
                     </form>

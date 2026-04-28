@@ -30,21 +30,42 @@ def logged_in():
     return "user" in session
 
 
-def is_admin():
-    if not logged_in():
-        return False
-    user = db.fetchone("SELECT is_admin FROM public.users WHERE email = %s", (session["user"],))
-    return user and user["is_admin"]
+def admin_logged_in():
+    return "admin" in session
 
 
 def admin_required():
-    if not is_admin():
-        flash("Access denied.", "error")
-        return redirect("/home")
+    if not admin_logged_in():
+        flash("Admin access only. Please log in.", "error")
+        return redirect("/admin/login")
     return None
 
 
 # ── AUTH ──────────────────────────────────────────────
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    if admin_logged_in():
+        return redirect("/admin")
+    if request.method == "POST":
+        email = request.form["email"].strip().lower()
+        try:
+            user = db.fetchone("SELECT * FROM public.users WHERE email = %s AND is_admin = TRUE", (email,))
+            if user and check_password_hash(user["password"], request.form["password"]):
+                session["admin"] = email
+                return redirect("/admin")
+            flash("Invalid credentials or not an admin.", "error")
+        except Exception:
+            traceback.print_exc()
+            flash("Login failed. Please try again.", "error")
+    return render_template("admin_login.html")
+
+
+@app.route("/admin/logout")
+def admin_logout():
+    session.pop("admin", None)
+    return redirect("/admin/login")
+
 
 @app.route("/")
 def landing():
@@ -64,7 +85,6 @@ def login():
             user = db.fetchone("SELECT * FROM public.users WHERE email = %s", (email,))
             if user and check_password_hash(user["password"], request.form["password"]):
                 session["user"] = email
-                session["is_admin"] = bool(user["is_admin"])
                 return redirect("/home")
             flash("Invalid email or password.", "error")
         except Exception as e:
@@ -353,12 +373,12 @@ def admin_dashboard():
     guard = admin_required()
     if guard: return guard
 
-    total_users    = db.fetchone("SELECT COUNT(*) AS c FROM public.users")["c"]
-    total_rooms    = db.fetchone("SELECT COUNT(*) AS c FROM rooms")["c"]
-    total_bookings = db.fetchone("SELECT COUNT(*) AS c FROM bookings")["c"]
-    total_revenue  = db.fetchone("SELECT COALESCE(SUM(amount),0) AS c FROM payments WHERE payment_status = 'Paid'")["c"]
+    total_users      = db.fetchone("SELECT COUNT(*) AS c FROM public.users")["c"]
+    total_rooms      = db.fetchone("SELECT COUNT(*) AS c FROM rooms")["c"]
+    total_bookings   = db.fetchone("SELECT COUNT(*) AS c FROM bookings")["c"]
+    total_revenue    = db.fetchone("SELECT COALESCE(SUM(amount),0) AS c FROM payments WHERE payment_status = 'Paid'")["c"]
     pending_payments = db.fetchone("SELECT COUNT(*) AS c FROM payments WHERE payment_status = 'Pending'")["c"]
-    recent_bookings = db.fetchall("""
+    recent_bookings  = db.fetchall("""
         SELECT bookings.id, bookings.user_email, rooms.name AS room_name,
                bookings.checkin, bookings.checkout, bookings.payment_status
         FROM bookings
@@ -387,6 +407,26 @@ def admin_bookings():
         ORDER BY bookings.id DESC
     """)
     return render_template("admin_bookings.html", bookings=rows)
+
+
+@app.route("/admin/bookings/confirm/<int:booking_id>", methods=["POST"])
+def admin_confirm_booking(booking_id):
+    guard = admin_required()
+    if guard: return guard
+    db.execute("UPDATE bookings SET payment_status = 'Paid' WHERE id = %s", (booking_id,))
+    db.execute("UPDATE payments SET payment_status = 'Paid', paid_at = NOW() WHERE booking_id = %s", (booking_id,))
+    flash("Booking confirmed.", "success")
+    return redirect("/admin/bookings")
+
+
+@app.route("/admin/bookings/reject/<int:booking_id>", methods=["POST"])
+def admin_reject_booking(booking_id):
+    guard = admin_required()
+    if guard: return guard
+    db.execute("UPDATE bookings SET payment_status = 'Cancelled' WHERE id = %s", (booking_id,))
+    db.execute("UPDATE payments SET payment_status = 'Cancelled' WHERE booking_id = %s", (booking_id,))
+    flash("Booking rejected.", "success")
+    return redirect("/admin/bookings")
 
 
 @app.route("/admin/bookings/delete/<int:booking_id>", methods=["POST"])
