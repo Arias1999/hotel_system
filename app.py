@@ -23,26 +23,20 @@ app.config.update(
 
 def _migrate():
     """Add missing columns and upsert the admin account."""
+    migrations = [
+        "ALTER TABLE public.users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'customer'",
+        "ALTER TABLE public.users ADD COLUMN IF NOT EXISTS full_name TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reference_number TEXT NOT NULL DEFAULT ''",
+        "UPDATE public.users SET role = 'admin' WHERE is_admin = TRUE AND role = 'customer'",
+    ]
+    for sql in migrations:
+        try:
+            db.execute(sql)
+        except Exception:
+            traceback.print_exc()
+
     try:
-        db.execute("""
-            ALTER TABLE public.users
-            ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'customer'
-        """)
-        db.execute("""
-            ALTER TABLE public.users
-            ADD COLUMN IF NOT EXISTS full_name TEXT NOT NULL DEFAULT ''
-        """)
-        db.execute("""
-            ALTER TABLE public.users
-            ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''
-        """)
-        db.execute("""
-            ALTER TABLE bookings
-            ADD COLUMN IF NOT EXISTS reference_number TEXT NOT NULL DEFAULT ''
-        """)
-        db.execute("""
-            UPDATE public.users SET role = 'admin' WHERE is_admin = TRUE AND role = 'customer'
-        """)
         existing = db.fetchone("SELECT id FROM public.users WHERE email = %s", ('admin@gmail.com',))
         if existing:
             db.execute(
@@ -191,9 +185,9 @@ def register():
                 )
                 flash("Account created successfully. Please login.", "success")
                 return redirect("/login")
-            except Exception:
+            except Exception as e:
                 traceback.print_exc()
-                flash("Registration failed. Please try again.", "error")
+                flash(f"Registration failed: {e}", "error")
     return render_template("register.html", email=email)
 
 @app.route("/logout")
