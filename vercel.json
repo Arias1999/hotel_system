@@ -1,14 +1,19 @@
 {
   "version": 2,
-  "functions": {
-    "app.py": {
-      "runtime": "vercel-python@4.3.1"
-    }
-  },
-  "rewrites": [
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/app.py"
+      "src": "app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "app.py"
     }
   ]
 }

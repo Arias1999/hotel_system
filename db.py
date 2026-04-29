@@ -1,13 +1,14 @@
 """
 db.py — Database helper
 ------------------------
-Derives the PostgreSQL pooler connection from SUPABASE_URL and SUPABASE_KEY.
-No separate DATABASE_URL needed — just set the two Supabase keys.
+Supports two ways to configure the connection:
 
-Environment variables (same ones used by supabase-js):
-  SUPABASE_URL  : https://PROJECT_REF.supabase.co
-  SUPABASE_KEY  : your publishable/anon or service role key
-  DB_PASSWORD   : your Supabase database password (Settings → Database → Reveal)
+Option A (recommended for Vercel) — single env var:
+  DATABASE_URL = postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres
+
+Option B — separate vars:
+  SUPABASE_URL = https://PROJECT_REF.supabase.co
+  DB_PASSWORD  = your database password
 """
 
 import os
@@ -20,28 +21,38 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
-_DB_PASSWORD  = os.environ.get("DB_PASSWORD", "")
-
-# Extract project ref from https://PROJECT_REF.supabase.co
-_match = re.match(r"https://([^.]+)\.supabase\.co", _SUPABASE_URL)
-_PROJECT_REF = _match.group(1) if _match else ""
-
 
 def _get_conn():
-    if not _PROJECT_REF or not _DB_PASSWORD:
-        raise RuntimeError(
-            "Set SUPABASE_URL (https://PROJECT_REF.supabase.co) "
-            "and DB_PASSWORD in your environment variables."
+    # Option A: full DATABASE_URL provided
+    database_url = os.environ.get("DATABASE_URL", "")
+    if database_url:
+        # Parse manually to avoid urlparse dot-in-username bug
+        # Format: postgresql://user:password@host:port/dbname
+        m = re.match(r"[^:]+://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)", database_url)
+        if m:
+            user, password, host, port, dbname = m.groups()
+            return psycopg2.connect(
+                host=host, port=int(port), dbname=dbname,
+                user=user, password=password,
+                sslmode="require", options="-c search_path=public"
+            )
+
+    # Option B: derive from SUPABASE_URL + DB_PASSWORD
+    supabase_url = os.environ.get("SUPABASE_URL", "")
+    db_password  = os.environ.get("DB_PASSWORD", "")
+    m = re.match(r"https://([^.]+)\.supabase\.co", supabase_url)
+    if m and db_password:
+        ref = m.group(1)
+        return psycopg2.connect(
+            host="aws-0-ap-southeast-1.pooler.supabase.com",
+            port=6543, dbname="postgres",
+            user=f"postgres.{ref}",
+            password=db_password,
+            sslmode="require", options="-c search_path=public"
         )
-    return psycopg2.connect(
-        host=f"aws-0-ap-southeast-1.pooler.supabase.com",
-        port=6543,
-        dbname="postgres",
-        user=f"postgres.{_PROJECT_REF}",
-        password=_DB_PASSWORD,
-        sslmode="require",
-        options="-c search_path=public",
+
+    raise RuntimeError(
+        "No database config found. Set DATABASE_URL or (SUPABASE_URL + DB_PASSWORD)."
     )
 
 
