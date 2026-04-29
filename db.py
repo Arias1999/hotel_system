@@ -1,100 +1,65 @@
 """
-db.py — Database helper
-------------------------
-Supports two ways to configure the connection:
+db.py — Database helper using supabase-py
+------------------------------------------
+Uses Supabase REST API. No database password needed.
 
-Option A (recommended for Vercel) — single env var:
-  DATABASE_URL = postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres
-
-Option B — separate vars:
-  SUPABASE_URL = https://PROJECT_REF.supabase.co
-  DB_PASSWORD  = your database password
+Environment variables:
+  SUPABASE_URL : https://zyjqxnnvnpjbgmnmlxns.supabase.co
+  SUPABASE_KEY : your anon/publishable key
 """
 
 import os
-import re
 import traceback
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from contextlib import contextmanager
 from dotenv import load_dotenv
+from supabase import create_client, Client
 
 load_dotenv()
 
+_url = os.environ.get("SUPABASE_URL", "")
+_key = os.environ.get("SUPABASE_KEY", "")
 
-def _get_conn():
-    # Option A: full DATABASE_URL provided
-    database_url = os.environ.get("DATABASE_URL", "")
-    if database_url:
-        # Parse manually to avoid urlparse dot-in-username bug
-        # Format: postgresql://user:password@host:port/dbname
-        m = re.match(r"[^:]+://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)", database_url)
-        if m:
-            user, password, host, port, dbname = m.groups()
-            return psycopg2.connect(
-                host=host, port=int(port), dbname=dbname,
-                user=user, password=password,
-                sslmode="require", options="-c search_path=public"
-            )
-
-    # Option B: derive from SUPABASE_URL + DB_PASSWORD
-    supabase_url = os.environ.get("SUPABASE_URL", "")
-    db_password  = os.environ.get("DB_PASSWORD", "")
-    m = re.match(r"https://([^.]+)\.supabase\.co", supabase_url)
-    if m and db_password:
-        ref = m.group(1)
-        return psycopg2.connect(
-            host="aws-0-ap-southeast-1.pooler.supabase.com",
-            port=6543, dbname="postgres",
-            user=f"postgres.{ref}",
-            password=db_password,
-            sslmode="require", options="-c search_path=public"
-        )
-
-    raise RuntimeError(
-        "No database config found. Set DATABASE_URL or (SUPABASE_URL + DB_PASSWORD)."
-    )
-
-
-@contextmanager
-def get_db():
-    conn = None
-    try:
-        conn = _get_conn()
-        yield conn
-        conn.commit()
-    except Exception:
-        if conn:
-            conn.rollback()
-        traceback.print_exc()
-        raise
-    finally:
-        if conn:
-            conn.close()
+supabase: Client = create_client(_url, _key)
 
 
 def fetchone(query, params=()):
-    with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(query, params)
-            return cur.fetchone()
+    result = supabase.rpc("execute_sql", {"query": _bind(query, params)}).execute()
+    rows = result.data
+    return rows[0] if rows else None
 
 
 def fetchall(query, params=()):
-    with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(query, params)
-            return cur.fetchall()
+    result = supabase.rpc("execute_sql", {"query": _bind(query, params)}).execute()
+    return result.data or []
 
 
 def execute(query, params=()):
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, params)
+    supabase.rpc("execute_sql", {"query": _bind(query, params)}).execute()
 
 
 def execute_returning(query, params=()):
-    with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(query, params)
-            return cur.fetchone()
+    result = supabase.rpc("execute_sql", {"query": _bind(query, params)}).execute()
+    rows = result.data
+    return rows[0] if rows else None
+
+
+def _bind(query, params):
+    """Replace %s placeholders with safely quoted values."""
+    if not params:
+        return query
+    parts = query.split("%s")
+    if len(parts) - 1 != len(params):
+        raise ValueError("Parameter count mismatch")
+    out = parts[0]
+    for i, val in enumerate(params):
+        out += _quote(val) + parts[i + 1]
+    return out
+
+
+def _quote(val):
+    if val is None:
+        return "NULL"
+    if isinstance(val, bool):
+        return "TRUE" if val else "FALSE"
+    if isinstance(val, (int, float)):
+        return str(val)
+    return "'" + str(val).replace("'", "''") + "'"
