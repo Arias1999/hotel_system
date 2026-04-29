@@ -1,36 +1,49 @@
 """
 db.py — Database helper
-------------------------
-Uses psycopg2 to connect to PostgreSQL.
-
-Environment variable:
-  DATABASE_URL : full PostgreSQL connection string
+Uses psycopg2 to connect to PostgreSQL using DATABASE_URL.
 """
 
 import os
 import traceback
+from contextlib import contextmanager
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from contextlib import contextmanager
 from dotenv import load_dotenv
 
 load_dotenv()
 
-_DATABASE_URL = os.environ.get("DATABASE_URL", "")
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+# Temporary debug for Vercel Logs
+print("DATABASE_URL exists:", bool(DATABASE_URL))
+print(
+    "DATABASE_URL contains project user:",
+    "postgres.zyjqxnnvnpjbgmnmlxns" in DATABASE_URL
+)
 
 
 @contextmanager
 def get_db():
     conn = None
     try:
-        conn = psycopg2.connect(_DATABASE_URL, sslmode="require", options="-c search_path=public")
+        if not DATABASE_URL:
+            raise RuntimeError("DATABASE_URL is missing. Check Vercel Environment Variables.")
+
+        conn = psycopg2.connect(
+            DATABASE_URL,
+            options="-c search_path=public"
+        )
+
         yield conn
         conn.commit()
+
     except Exception:
         if conn:
             conn.rollback()
         traceback.print_exc()
         raise
+
     finally:
         if conn:
             conn.close()
