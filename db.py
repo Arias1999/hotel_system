@@ -1,56 +1,45 @@
 """
-db.py — Database helper module
--------------------------------
-Reads DATABASE_URL from environment.
+db.py — Database helper
+------------------------
+Derives the PostgreSQL pooler connection from SUPABASE_URL and SUPABASE_KEY.
+No separate DATABASE_URL needed — just set the two Supabase keys.
 
-Local (.env):    use direct connection  port 5432
-Vercel (prod):   use transaction pooler port 6543
-
-Set DATABASE_URL in Vercel environment variables to the pooler URL:
-  postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres
+Environment variables (same ones used by supabase-js):
+  SUPABASE_URL  : https://PROJECT_REF.supabase.co
+  SUPABASE_KEY  : your publishable/anon or service role key
+  DB_PASSWORD   : your Supabase database password (Settings → Database → Reveal)
 """
 
 import os
+import re
 import traceback
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from contextlib import contextmanager
-from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 load_dotenv()
 
-_DATABASE_URL = os.environ.get("DATABASE_URL", "")
+_SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+_DB_PASSWORD  = os.environ.get("DB_PASSWORD", "")
+
+# Extract project ref from https://PROJECT_REF.supabase.co
+_match = re.match(r"https://([^.]+)\.supabase\.co", _SUPABASE_URL)
+_PROJECT_REF = _match.group(1) if _match else ""
 
 
 def _get_conn():
-    """Parse DATABASE_URL and connect using keyword args.
-    urlparse splits 'postgres.PROJECT_REF' username correctly only
-    when we extract it from the raw URL string.
-    """
-    # urlparse handles user:password@host:port/db correctly
-    # but usernames with dots (postgres.ref) need the netloc parsed manually
-    url = urlparse(_DATABASE_URL)
-    # url.username lowercases and stops at '.' — use raw netloc instead
-    netloc = url.netloc  # user:password@host:port
-    userinfo, hostinfo = netloc.rsplit("@", 1)
-    if ":" in userinfo:
-        username, password = userinfo.split(":", 1)
-    else:
-        username, password = userinfo, ""
-    if ":" in hostinfo:
-        host, port_str = hostinfo.rsplit(":", 1)
-        port = int(port_str)
-    else:
-        host, port = hostinfo, 5432
-    dbname = url.path.lstrip("/")
-
+    if not _PROJECT_REF or not _DB_PASSWORD:
+        raise RuntimeError(
+            "Set SUPABASE_URL (https://PROJECT_REF.supabase.co) "
+            "and DB_PASSWORD in your environment variables."
+        )
     return psycopg2.connect(
-        host=host,
-        port=port,
-        dbname=dbname,
-        user=username,
-        password=password,
+        host=f"aws-0-ap-southeast-1.pooler.supabase.com",
+        port=6543,
+        dbname="postgres",
+        user=f"postgres.{_PROJECT_REF}",
+        password=_DB_PASSWORD,
         sslmode="require",
         options="-c search_path=public",
     )
@@ -58,7 +47,6 @@ def _get_conn():
 
 @contextmanager
 def get_db():
-    """Open a connection, yield it, commit/rollback, then close."""
     conn = None
     try:
         conn = _get_conn()
