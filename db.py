@@ -19,23 +19,16 @@ load_dotenv()
 
 _DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
-if not _DATABASE_URL:
-    import sys
-    print("ERROR: DATABASE_URL environment variable is not set.", file=sys.stderr)
-
-# Append sslmode=require — Supabase rejects unencrypted connections
-# sslmode=require — Supabase rejects unencrypted connections
-# options=-csearch_path=public — forces all unqualified table names to resolve
-# to the public schema, preventing conflicts with Supabase's internal auth.users
-_DSN = _DATABASE_URL + ("&" if "?" in _DATABASE_URL else "?") + "sslmode=require&options=-csearch_path%3Dpublic"
-
 
 @contextmanager
 def get_db():
-    """Open a connection, yield it, commit/rollback, then close."""
     conn = None
     try:
-        conn = psycopg2.connect(_DSN)
+        conn = psycopg2.connect(
+            _DATABASE_URL,
+            sslmode="require",
+            options="-c search_path=public"
+        )
         yield conn
         conn.commit()
     except Exception:
