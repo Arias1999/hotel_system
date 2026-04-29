@@ -21,6 +21,7 @@
                     <th>Check-in</th>
                     <th>Check-out</th>
                     <th>Method</th>
+                    <th>Reference #</th>
                     <th>Amount</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -35,6 +36,7 @@
                     <td>{{ b.checkin }}</td>
                     <td>{{ b.checkout }}</td>
                     <td>{{ b.payment_method or '—' }}</td>
+                    <td>{{ b.reference_number or '—' }}</td>
                     <td>{% if b.amount %}₱{{ "%.2f"|format(b.amount|float) }}{% else %}—{% endif %}</td>
                     <td><span class="badge badge-{{ (b.pay_status or b.payment_status or 'pending')|lower }}">{{ b.pay_status or b.payment_status or 'Pending' }}</span></td>
                     <td>

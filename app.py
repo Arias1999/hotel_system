@@ -37,6 +37,10 @@ def _migrate():
             ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''
         """)
         db.execute("""
+            ALTER TABLE bookings
+            ADD COLUMN IF NOT EXISTS reference_number TEXT NOT NULL DEFAULT ''
+        """)
+        db.execute("""
             UPDATE public.users SET role = 'admin' WHERE is_admin = TRUE AND role = 'customer'
         """)
         existing = db.fetchone("SELECT id FROM public.users WHERE email = %s", ('admin@gmail.com',))
@@ -261,6 +265,11 @@ def book(room_id):
         checkin = request.form.get("checkin", "")
         checkout = request.form.get("checkout", "")
         payment_method = request.form.get("payment_method", "Cash")
+        reference_number = ""
+        if payment_method == "GCash":
+            reference_number = request.form.get("gcash_number", "").strip()
+        elif payment_method == "Maya":
+            reference_number = request.form.get("maya_number", "").strip()
 
         if not checkin or not checkout:
             flash("Please select both check-in and check-out dates.", "error")
@@ -283,8 +292,8 @@ def book(room_id):
             return render_template("booking.html", room=room, checkin=checkin, checkout=checkout, payment_method=payment_method)
 
         booking = db.execute_returning(
-            "INSERT INTO bookings (user_email, room_id, checkin, checkout, payment_method, payment_status) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
-            (session["user"], room_id, checkin, checkout, payment_method, "Pending")
+            "INSERT INTO bookings (user_email, room_id, checkin, checkout, payment_method, payment_status, reference_number) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            (session["user"], room_id, checkin, checkout, payment_method, "Pending", reference_number)
         )
 
         try:
@@ -467,6 +476,7 @@ def admin_bookings():
         SELECT bookings.id, bookings.user_email, rooms.name AS room_name,
                bookings.checkin, bookings.checkout,
                bookings.payment_method, bookings.payment_status,
+               bookings.reference_number,
                payments.amount, payments.payment_status AS pay_status
         FROM bookings
         JOIN rooms ON bookings.room_id = rooms.id

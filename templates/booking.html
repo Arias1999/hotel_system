@@ -70,6 +70,23 @@
             </label>
         </div>
 
+        <!-- GCash / Maya reference number field -->
+        <div id="gcash-field" style="display:none; margin-bottom:16px;">
+            <label>GCash Number <span style="color:#c9a84c;font-size:12px;">*</span></label>
+            <input type="tel" name="gcash_number" id="gcash_number" placeholder="09XX XXX XXXX"
+                   pattern="^09\d{9}$" maxlength="11"
+                   style="display:block;width:100%;padding:11px 14px;border:1px solid #3e3e52;border-radius:8px;font-size:14px;background:#1e1e2e;color:#e8e0d0;margin-top:6px;">
+            <p style="font-size:12px;color:#8a7a6a;margin-top:6px;">Enter the GCash number used for payment (e.g. 09171234567)</p>
+        </div>
+
+        <div id="maya-field" style="display:none; margin-bottom:16px;">
+            <label>Maya Number <span style="color:#c9a84c;font-size:12px;">*</span></label>
+            <input type="tel" name="maya_number" id="maya_number" placeholder="09XX XXX XXXX"
+                   pattern="^09\d{9}$" maxlength="11"
+                   style="display:block;width:100%;padding:11px 14px;border:1px solid #3e3e52;border-radius:8px;font-size:14px;background:#1e1e2e;color:#e8e0d0;margin-top:6px;">
+            <p style="font-size:12px;color:#8a7a6a;margin-top:6px;">Enter the Maya number used for payment (e.g. 09171234567)</p>
+        </div>
+
         <button class="btn btn-full" type="submit">Confirm Booking</button>
         <a href="/room/{{ room['id'] }}" class="btn btn-outline btn-full">Cancel</a>
     </form>
@@ -87,6 +104,38 @@
         if (!details) return;
         details.style.display = details.style.display === 'none' ? 'block' : 'none';
     }
+
+    // Show/hide GCash or Maya number field based on selected payment method
+    function handlePaymentChange() {
+        const selected = document.querySelector('input[name="payment_method"]:checked');
+        const gcashField  = document.getElementById('gcash-field');
+        const mayaField   = document.getElementById('maya-field');
+        const gcashInput  = document.getElementById('gcash_number');
+        const mayaInput   = document.getElementById('maya_number');
+
+        gcashField.style.display = 'none';
+        mayaField.style.display  = 'none';
+        gcashInput.required = false;
+        mayaInput.required  = false;
+
+        if (!selected) return;
+
+        if (selected.value === 'GCash') {
+            gcashField.style.display = 'block';
+            gcashInput.required = true;
+        } else if (selected.value === 'Maya') {
+            mayaField.style.display = 'block';
+            mayaInput.required = true;
+        }
+    }
+
+    // Attach listeners to all payment radio buttons
+    document.querySelectorAll('input[name="payment_method"]').forEach(function(radio) {
+        radio.addEventListener('change', handlePaymentChange);
+    });
+
+    // Run on page load in case a method is pre-selected
+    handlePaymentChange();
 </script>
 
 {% endblock %}
