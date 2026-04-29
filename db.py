@@ -15,7 +15,7 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
-# Temporary debug for Vercel Logs
+# Debug logs (these will appear in Vercel Logs)
 print("DATABASE_URL exists:", bool(DATABASE_URL))
 print(
     "DATABASE_URL contains project user:",
