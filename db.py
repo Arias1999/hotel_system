@@ -15,7 +15,7 @@ import traceback
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from contextlib import contextmanager
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,14 +24,33 @@ _DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 
 def _get_conn():
-    """Parse DATABASE_URL and connect using keyword args (no query string issues)."""
+    """Parse DATABASE_URL and connect using keyword args.
+    urlparse splits 'postgres.PROJECT_REF' username correctly only
+    when we extract it from the raw URL string.
+    """
+    # urlparse handles user:password@host:port/db correctly
+    # but usernames with dots (postgres.ref) need the netloc parsed manually
     url = urlparse(_DATABASE_URL)
+    # url.username lowercases and stops at '.' — use raw netloc instead
+    netloc = url.netloc  # user:password@host:port
+    userinfo, hostinfo = netloc.rsplit("@", 1)
+    if ":" in userinfo:
+        username, password = userinfo.split(":", 1)
+    else:
+        username, password = userinfo, ""
+    if ":" in hostinfo:
+        host, port_str = hostinfo.rsplit(":", 1)
+        port = int(port_str)
+    else:
+        host, port = hostinfo, 5432
+    dbname = url.path.lstrip("/")
+
     return psycopg2.connect(
-        host=url.hostname,
-        port=url.port or 5432,
-        dbname=url.path.lstrip("/"),
-        user=url.username,
-        password=url.password,
+        host=host,
+        port=port,
+        dbname=dbname,
+        user=username,
+        password=password,
         sslmode="require",
         options="-c search_path=public",
     )
