@@ -52,70 +52,41 @@
 </div>
 
 <!-- MID ROW -->
-<div class="mid-row">
-
-    <!-- RECENT BOOKINGS -->
-    <div class="card">
-        <div class="card-header">
-            <h3>Recent Bookings</h3>
-            <span class="card-badge">Last 5</span>
-        </div>
-        <div class="table-wrap">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Guest</th>
-                        <th>Room</th>
-                        <th>Check-in</th>
-                        <th>Check-out</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for b in recent_bookings %}
-                    <tr>
-                        <td>#{{ b.id }}</td>
-                        <td>{{ b.user_email }}</td>
-                        <td>{{ b.room_name }}</td>
-                        <td>{{ b.checkin }}</td>
-                        <td>{{ b.checkout }}</td>
-                        <td><span class="badge badge-{{ (b.payment_status or 'pending')|lower }}">{{ b.payment_status or 'Pending' }}</span></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+<div class="card">
+    <div class="card-header">
+        <h3>Recent Bookings</h3>
+        <span class="card-badge">Last 5</span>
     </div>
-
-    <!-- BOOKINGS OVERVIEW CHART -->
-    <div class="card">
-        <div class="card-header">
-            <h3>Bookings Overview</h3>
-            <span class="card-badge">This Week</span>
-        </div>
-        <div class="chart-wrap">
-            <div class="chart-bars">
-                <div class="chart-bar-col"><div class="chart-bar" style="height:42%"></div><span class="chart-lbl">Mon</span></div>
-                <div class="chart-bar-col"><div class="chart-bar" style="height:68%"></div><span class="chart-lbl">Tue</span></div>
-                <div class="chart-bar-col"><div class="chart-bar muted" style="height:30%"></div><span class="chart-lbl">Wed</span></div>
-                <div class="chart-bar-col"><div class="chart-bar" style="height:82%"></div><span class="chart-lbl">Thu</span></div>
-                <div class="chart-bar-col"><div class="chart-bar" style="height:55%"></div><span class="chart-lbl">Fri</span></div>
-                <div class="chart-bar-col"><div class="chart-bar" style="height:95%"></div><span class="chart-lbl">Sat</span></div>
-                <div class="chart-bar-col"><div class="chart-bar muted" style="height:40%"></div><span class="chart-lbl">Sun</span></div>
-            </div>
-            <div class="chart-legend">
-                <div class="legend-item"><div class="legend-dot"></div>Confirmed</div>
-                <div class="legend-item"><div class="legend-dot muted"></div>Pending</div>
-            </div>
-        </div>
+    <div class="table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Guest</th>
+                    <th>Room</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in recent_bookings %}
+                <tr>
+                    <td>#{{ b.id }}</td>
+                    <td>{{ b.user_email }}</td>
+                    <td>{{ b.room_name }}</td>
+                    <td>{{ b.checkin }}</td>
+                    <td>{{ b.checkout }}</td>
+                    <td><span class="badge badge-{{ (b.payment_status or 'pending')|lower }}">{{ b.payment_status or 'Pending' }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-
 </div>
 
 <!-- BOTTOM ROW -->
-<div class="bottom-row">
-
+<div style="margin-top:18px;">
     <div class="card">
         <div class="card-header">
             <h3>Quick Actions</h3>
@@ -127,27 +98,6 @@
             <a href="/admin/users"    class="btn-sm btn-ghost">👥 Manage Users</a>
         </div>
     </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h3>System Info</h3>
-        </div>
-        <div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px;">
-            <div style="display:flex;justify-content:space-between;font-size:12.5px;">
-                <span style="color:var(--text-muted)">Database</span>
-                <span style="color:#6ecf9e;font-weight:600;">● Connected</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:12.5px;">
-                <span style="color:var(--text-muted)">Environment</span>
-                <span style="color:var(--gold)">Production</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:12.5px;">
-                <span style="color:var(--text-muted)">SSL</span>
-                <span style="color:#6ecf9e;font-weight:600;">● Enabled</span>
-            </div>
-        </div>
-    </div>
-
 </div>
 
 {% endblock %}
