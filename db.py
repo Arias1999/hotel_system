@@ -1,65 +1,63 @@
 """
-db.py — Database helper using supabase-py
-------------------------------------------
-Uses Supabase REST API. No database password needed.
+db.py — Database helper
+------------------------
+Uses psycopg2 to connect to PostgreSQL.
 
-Environment variables:
-  SUPABASE_URL : https://zyjqxnnvnpjbgmnmlxns.supabase.co
-  SUPABASE_KEY : your anon/publishable key
+Environment variable:
+  DATABASE_URL : full PostgreSQL connection string
 """
 
 import os
 import traceback
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from contextlib import contextmanager
 from dotenv import load_dotenv
-from supabase import create_client, Client
 
 load_dotenv()
 
-_url = os.environ.get("SUPABASE_URL", "")
-_key = os.environ.get("SUPABASE_KEY", "")
+_DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
-supabase: Client = create_client(_url, _key)
+
+@contextmanager
+def get_db():
+    conn = None
+    try:
+        conn = psycopg2.connect(_DATABASE_URL, sslmode="require", options="-c search_path=public")
+        yield conn
+        conn.commit()
+    except Exception:
+        if conn:
+            conn.rollback()
+        traceback.print_exc()
+        raise
+    finally:
+        if conn:
+            conn.close()
 
 
 def fetchone(query, params=()):
-    result = supabase.rpc("execute_sql", {"query": _bind(query, params)}).execute()
-    rows = result.data
-    return rows[0] if rows else None
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query, params)
+            return cur.fetchone()
 
 
 def fetchall(query, params=()):
-    result = supabase.rpc("execute_sql", {"query": _bind(query, params)}).execute()
-    return result.data or []
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query, params)
+            return cur.fetchall()
 
 
 def execute(query, params=()):
-    supabase.rpc("execute_sql", {"query": _bind(query, params)}).execute()
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, params)
 
 
 def execute_returning(query, params=()):
-    result = supabase.rpc("execute_sql", {"query": _bind(query, params)}).execute()
-    rows = result.data
-    return rows[0] if rows else None
-
-
-def _bind(query, params):
-    """Replace %s placeholders with safely quoted values."""
-    if not params:
-        return query
-    parts = query.split("%s")
-    if len(parts) - 1 != len(params):
-        raise ValueError("Parameter count mismatch")
-    out = parts[0]
-    for i, val in enumerate(params):
-        out += _quote(val) + parts[i + 1]
-    return out
-
-
-def _quote(val):
-    if val is None:
-        return "NULL"
-    if isinstance(val, bool):
-        return "TRUE" if val else "FALSE"
-    if isinstance(val, (int, float)):
-        return str(val)
-    return "'" + str(val).replace("'", "''") + "'"
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query, params)
+            return cur.fetchone()
