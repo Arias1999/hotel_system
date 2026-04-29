@@ -1,11 +1,13 @@
 """
 db.py — Database helper module
 -------------------------------
-Reads a single DATABASE_URL environment variable.
-Set this in .env (local) and in Vercel environment variables (production).
+Reads DATABASE_URL from environment.
 
-Supabase direct connection (port 5432) works on both local and Vercel.
-SSL is enforced via sslmode=require.
+Local (.env):    use direct connection  port 5432
+Vercel (prod):   use transaction pooler port 6543
+
+Set DATABASE_URL in Vercel environment variables to the pooler URL:
+  postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres
 """
 
 import os
@@ -13,6 +15,7 @@ import traceback
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from contextlib import contextmanager
+from urllib.parse import urlparse, parse_qs
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,15 +23,26 @@ load_dotenv()
 _DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 
+def _get_conn():
+    """Parse DATABASE_URL and connect using keyword args (no query string issues)."""
+    url = urlparse(_DATABASE_URL)
+    return psycopg2.connect(
+        host=url.hostname,
+        port=url.port or 5432,
+        dbname=url.path.lstrip("/"),
+        user=url.username,
+        password=url.password,
+        sslmode="require",
+        options="-c search_path=public",
+    )
+
+
 @contextmanager
 def get_db():
+    """Open a connection, yield it, commit/rollback, then close."""
     conn = None
     try:
-        conn = psycopg2.connect(
-            _DATABASE_URL,
-            sslmode="require",
-            options="-c search_path=public"
-        )
+        conn = _get_conn()
         yield conn
         conn.commit()
     except Exception:
