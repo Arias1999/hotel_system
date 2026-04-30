@@ -165,6 +165,184 @@ def home():
 
 
 # =========================
+# ROOMS
+# =========================
+@app.route("/rooms")
+def rooms():
+    if not logged_in():
+        return redirect("/")
+
+    category = request.args.get("category")
+
+    try:
+        if category:
+            room_list = db.fetchall(
+                "SELECT * FROM rooms WHERE category = %s",
+                (category,)
+            )
+        else:
+            room_list = db.fetchall("SELECT * FROM rooms ORDER BY available DESC")
+    except Exception:
+        traceback.print_exc()
+        room_list = []
+
+    return render_template("rooms.html", rooms=room_list, category=category)
+
+
+# =========================
+# MESSAGES
+# =========================
+@app.route("/messages", methods=["GET", "POST"])
+def messages():
+    if not logged_in():
+        return redirect("/")
+
+    email = session["user"]
+
+    if request.method == "POST":
+        subject = request.form.get("subject", "").strip()
+        body = request.form.get("body", "").strip()
+        if not body:
+            flash("Message cannot be empty.", "error")
+        else:
+            try:
+                db.execute(
+                    "INSERT INTO messages (user_email, subject, body) VALUES (%s, %s, %s)",
+                    (email, subject, body)
+                )
+                flash("Message sent!", "success")
+            except Exception:
+                traceback.print_exc()
+                flash("Failed to send message.", "error")
+        return redirect("/messages")
+
+    try:
+        inbox = db.fetchall(
+            "SELECT * FROM messages WHERE user_email = %s ORDER BY created_at DESC",
+            (email,)
+        )
+        user = db.fetchone("SELECT full_name, phone, email FROM users WHERE email = %s", (email,))
+    except Exception:
+        traceback.print_exc()
+        inbox = []
+        user = {}
+
+    return render_template("messages.html", inbox=inbox, user=user)
+
+
+@app.route("/cancel/<int:booking_id>", methods=["POST"])
+def cancel_booking(booking_id):
+    if not logged_in():
+        return redirect("/")
+
+    email = session["user"]
+    reason = request.form.get("reason", "").strip()
+
+    try:
+        booking = db.fetchone(
+            """
+            SELECT b.id, b.user_email, r.name AS room_name
+            FROM bookings b JOIN rooms r ON b.room_id = r.id
+            WHERE b.id = %s AND b.user_email = %s
+            """,
+            (booking_id, email)
+        )
+
+        if not booking:
+            flash("Booking not found.", "error")
+            return redirect("/my-bookings")
+
+        user = db.fetchone("SELECT full_name, phone FROM users WHERE email = %s", (email,))
+
+        db.execute(
+            "UPDATE bookings SET cancel_status = 'Pending Cancellation', cancel_reason = %s WHERE id = %s",
+            (reason or "No reason provided", booking_id)
+        )
+
+        body = (
+            f"Cancellation request for Booking #{booking_id} - '{booking['room_name']}'.\n\n"
+            f"Reason: {reason or 'No reason provided'}\n\n"
+            f"User: {user['full_name'] if user else ''}\n"
+            f"Email: {email}\n"
+            f"Phone: {user['phone'] if user else ''}"
+        )
+        db.execute(
+            "INSERT INTO messages (user_email, subject, body) VALUES (%s, %s, %s)",
+            (email, f"Cancellation Request - Booking #{booking_id}", body)
+        )
+
+        flash("Cancellation request submitted. Awaiting admin approval.", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Failed to submit cancellation request.", "error")
+
+    return redirect("/my-bookings")
+
+
+@app.route("/admin/bookings/approve-cancel/<int:booking_id>", methods=["POST"])
+def approve_cancel(booking_id):
+    guard = admin_required()
+    if guard:
+        return guard
+    try:
+        db.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
+        flash("Cancellation approved and booking deleted.", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Failed to approve cancellation.", "error")
+    return redirect("/admin/bookings")
+
+
+@app.route("/admin/bookings/reject-cancel/<int:booking_id>", methods=["POST"])
+def reject_cancel(booking_id):
+    guard = admin_required()
+    if guard:
+        return guard
+    try:
+        db.execute(
+            "UPDATE bookings SET cancel_status = 'None', cancel_reason = NULL WHERE id = %s",
+            (booking_id,)
+        )
+        flash("Cancellation request rejected.", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Failed to reject cancellation.", "error")
+    return redirect("/admin/bookings")
+
+
+@app.route("/admin/messages")
+def admin_messages():
+    guard = admin_required()
+    if guard:
+        return guard
+    try:
+        msgs = db.fetchall("SELECT * FROM messages ORDER BY created_at DESC")
+    except Exception:
+        traceback.print_exc()
+        msgs = []
+    return render_template("admin_messages.html", msgs=msgs)
+
+
+@app.route("/admin/messages/reply/<int:msg_id>", methods=["POST"])
+def admin_reply(msg_id):
+    guard = admin_required()
+    if guard:
+        return guard
+    reply = request.form.get("reply", "").strip()
+    if reply:
+        try:
+            db.execute(
+                "UPDATE messages SET reply = %s, replied_at = NOW() WHERE id = %s",
+                (reply, msg_id)
+            )
+            flash("Reply sent.", "success")
+        except Exception:
+            traceback.print_exc()
+            flash("Failed to send reply.", "error")
+    return redirect("/admin/messages")
+
+
+# =========================
 # ADMIN
 # =========================
 @app.route("/admin")

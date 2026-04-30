@@ -24,6 +24,7 @@
                     <th>Reference #</th>
                     <th>Amount</th>
                     <th>Status</th>
+                    <th>Cancel</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -40,7 +41,22 @@
                     <td>{% if b.amount %}₱{{ "%.2f"|format(b.amount|float) }}{% else %}—{% endif %}</td>
                     <td><span class="badge badge-{{ (b.pay_status or b.payment_status or 'pending')|lower }}">{{ b.pay_status or b.payment_status or 'Pending' }}</span></td>
                     <td>
+                        {% if b.cancel_status == 'Pending Cancellation' %}
+                        <span class="badge badge-pending" title="{{ b.cancel_reason }}">⏳ Pending Cancel</span>
+                        {% else %}
+                        <span style="opacity:0.3;font-size:11px;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
                         <div class="btn-actions">
+                            {% if b.cancel_status == 'Pending Cancellation' %}
+                            <form method="POST" action="/admin/bookings/approve-cancel/{{ b.id }}">
+                                <button class="btn-sm btn-danger" type="submit">Approve Cancel</button>
+                            </form>
+                            <form method="POST" action="/admin/bookings/reject-cancel/{{ b.id }}">
+                                <button class="btn-sm btn-ghost" type="submit">Reject Cancel</button>
+                            </form>
+                            {% else %}
                             {% if (b.pay_status or b.payment_status) != 'Paid' %}
                             <form method="POST" action="/admin/bookings/confirm/{{ b.id }}">
                                 <button class="btn-sm btn-gold" type="submit">Confirm</button>
@@ -54,6 +70,7 @@
                             <form method="POST" action="/admin/bookings/delete/{{ b.id }}" onsubmit="return confirm('Delete this booking?')">
                                 <button class="btn-sm btn-danger" type="submit">Delete</button>
                             </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
