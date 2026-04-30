@@ -1,0 +1,124 @@
+{% extends "admin_base.html" %}
+
+{% block title %}My Profile{% endblock %}
+{% block nav_profile %}active{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+{% block page_subtitle %}Manage your admin account{% endblock %}
+
+{% block content %}
+
+<div style="display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start;">
+
+    <!-- LEFT: Profile Card -->
+    <div style="display:flex;flex-direction:column;gap:18px;">
+
+        <div class="card" style="text-align:center;padding:30px 20px;">
+            <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-dark));display:grid;place-items:center;font-size:32px;margin:0 auto 14px;">👤</div>
+            <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:4px;">{{ admin.full_name or 'Admin' }}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">{{ admin.email }}</div>
+            <span class="badge badge-paid" style="font-size:11px;">Administrator</span>
+            {% if admin.created_at %}
+            <div style="font-size:11px;color:var(--text-muted);margin-top:12px;">Member since {{ admin.created_at.strftime('%B %d, %Y') }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Stats -->
+        <div class="card">
+            <div class="card-header"><h3>System Overview</h3></div>
+            <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:12.5px;color:var(--text-sub);">📋 Total Bookings</span>
+                    <span style="font-size:13px;font-weight:700;color:var(--text);">{{ total_bookings }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:12.5px;color:var(--text-sub);">👥 Total Users</span>
+                    <span style="font-size:13px;font-weight:700;color:var(--text);">{{ total_users }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:12.5px;color:var(--text-sub);">🛏️ Total Rooms</span>
+                    <span style="font-size:13px;font-weight:700;color:var(--text);">{{ total_rooms }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:12.5px;color:var(--text-sub);">📩 Total Messages</span>
+                    <span style="font-size:13px;font-weight:700;color:var(--text);">{{ total_messages }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:12.5px;color:var(--text-sub);">⏳ Pending Cancellations</span>
+                    <span style="font-size:13px;font-weight:700;color:{% if pending_cancel > 0 %}var(--gold){% else %}var(--text){% endif %};">{{ pending_cancel }}</span>
+                </div>
+                <div style="border-top:1px solid var(--gold-border);padding-top:12px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:12.5px;color:var(--text-sub);">💰 Total Revenue</span>
+                    <span style="font-size:14px;font-weight:700;color:var(--gold);">₱{{ "%.2f"|format(total_revenue|float) }}</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RIGHT: Edit Form -->
+    <div style="display:flex;flex-direction:column;gap:18px;">
+
+        <div class="card">
+            <div class="card-header"><h3>Account Information</h3></div>
+            <div style="padding:22px 24px;">
+                <form method="POST" action="/admin/profile" style="display:flex;flex-direction:column;gap:14px;">
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div>
+                            <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.7px;display:block;margin-bottom:6px;">Full Name</label>
+                            <input type="text" name="full_name" value="{{ admin.full_name or '' }}" class="admin-input" style="width:100%;">
+                        </div>
+                        <div>
+                            <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.7px;display:block;margin-bottom:6px;">Phone</label>
+                            <input type="text" name="phone" value="{{ admin.phone or '' }}" class="admin-input" style="width:100%;">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.7px;display:block;margin-bottom:6px;">Email</label>
+                        <input type="text" value="{{ admin.email }}" readonly class="admin-input" style="width:100%;opacity:0.5;cursor:not-allowed;">
+                    </div>
+
+                    <div>
+                        <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.7px;display:block;margin-bottom:6px;">Role</label>
+                        <input type="text" value="Administrator" readonly class="admin-input" style="width:100%;opacity:0.5;cursor:not-allowed;">
+                    </div>
+
+                    <div style="border-top:1px solid var(--gold-border);padding-top:16px;">
+                        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Change Password — leave blank to keep current</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div>
+                                <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.7px;display:block;margin-bottom:6px;">New Password</label>
+                                <input type="password" name="new_password" placeholder="New password" class="admin-input" style="width:100%;">
+                            </div>
+                            <div>
+                                <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.7px;display:block;margin-bottom:6px;">Confirm Password</label>
+                                <input type="password" name="confirm_password" placeholder="Confirm password" class="admin-input" style="width:100%;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:flex-end;">
+                        <button type="submit" class="btn-sm btn-gold" style="padding:9px 24px;font-size:13px;">Save Changes</button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="card">
+            <div class="card-header"><h3>Quick Actions</h3></div>
+            <div style="padding:16px 20px;display:flex;flex-wrap:wrap;gap:10px;">
+                <a href="/admin/bookings" class="btn-sm btn-gold">📋 Bookings</a>
+                <a href="/admin/payments" class="btn-sm btn-gold">💳 Payments</a>
+                <a href="/admin/rooms"    class="btn-sm btn-ghost">🛏️ Rooms</a>
+                <a href="/admin/users"    class="btn-sm btn-ghost">👥 Users</a>
+                <a href="/admin/messages" class="btn-sm btn-ghost">📩 Messages</a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

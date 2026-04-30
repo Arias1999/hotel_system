@@ -492,6 +492,7 @@
         <a href="/admin/rooms"    class="nav-item {% block nav_rooms %}{% endblock %}"><span class="nav-icon">🛏️</span> Rooms</a>
         <a href="/admin/messages" class="nav-item {% block nav_messages %}{% endblock %}"><span class="nav-icon">📩</span> Messages</a>
         <a href="/admin/users"    class="nav-item {% block nav_users %}{% endblock %}"><span class="nav-icon">👥</span> Users</a>
+        <a href="/admin/profile"  class="nav-item {% block nav_profile %}{% endblock %}"><span class="nav-icon">⚙️</span> My Profile</a>
     </nav>
     <div class="sidebar-footer">
         <a href="/logout" class="nav-item logout"><span class="nav-icon">🚪</span> Logout</a>
@@ -505,10 +506,10 @@
             <h1>{% block page_title %}Admin{% endblock %}</h1>
             <p>{% block page_subtitle %}Welcome back, Admin!{% endblock %}</p>
         </div>
-        <div class="topbar-right">
+        <a href="/admin/profile" class="topbar-right" style="text-decoration:none;">
             <div class="topbar-avatar">👤</div>
-            <span class="topbar-email">{{ session.get('user', 'Admin') }}</span>
-        </div>
+            <span class="topbar-email">{{ session.get('admin', 'Admin') }}</span>
+        </a>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}

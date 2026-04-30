@@ -352,18 +352,280 @@ def admin_dashboard():
         return guard
 
     try:
-        users = db.fetchone("SELECT COUNT(*) AS c FROM users")["c"]
-        bookings = db.fetchone("SELECT COUNT(*) AS c FROM bookings")["c"]
+        total_users = db.fetchone("SELECT COUNT(*) AS c FROM users")["c"]
+        total_bookings = db.fetchone("SELECT COUNT(*) AS c FROM bookings")["c"]
+        total_rooms = db.fetchone("SELECT COUNT(*) AS c FROM rooms")["c"]
+        pending_payments = db.fetchone("SELECT COUNT(*) AS c FROM bookings WHERE payment_status = 'Pending'")["c"]
+        revenue_row = db.fetchone("SELECT COALESCE(SUM(amount), 0) AS r FROM payments WHERE payment_status = 'Paid'")
+        total_revenue = revenue_row["r"] if revenue_row else 0
+        recent_bookings = db.fetchall(
+            """
+            SELECT b.id, b.user_email, r.name AS room_name, b.checkin, b.checkout, b.payment_status
+            FROM bookings b JOIN rooms r ON b.room_id = r.id
+            ORDER BY b.created_at DESC LIMIT 5
+            """
+        )
     except Exception:
         traceback.print_exc()
-        users = 0
-        bookings = 0
+        total_users = total_bookings = total_rooms = pending_payments = total_revenue = 0
+        recent_bookings = []
 
     return render_template(
         "admin_dashboard.html",
-        total_users=users,
-        total_bookings=bookings
+        total_users=total_users,
+        total_bookings=total_bookings,
+        total_rooms=total_rooms,
+        pending_payments=pending_payments,
+        total_revenue=total_revenue,
+        recent_bookings=recent_bookings,
     )
+
+
+@app.route("/admin/profile", methods=["GET", "POST"])
+def admin_profile():
+    guard = admin_required()
+    if guard:
+        return guard
+
+    email = session["admin"]
+
+    if request.method == "POST":
+        full_name = request.form.get("full_name", "").strip()
+        phone = request.form.get("phone", "").strip()
+        new_password = request.form.get("new_password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+
+        try:
+            if new_password:
+                if new_password != confirm_password:
+                    flash("Passwords do not match.", "error")
+                    return redirect("/admin/profile")
+                db.execute(
+                    "UPDATE users SET full_name = %s, phone = %s, password = %s WHERE email = %s",
+                    (full_name, phone, generate_password_hash(new_password), email)
+                )
+            else:
+                db.execute(
+                    "UPDATE users SET full_name = %s, phone = %s WHERE email = %s",
+                    (full_name, phone, email)
+                )
+            flash("Profile updated.", "success")
+        except Exception:
+            traceback.print_exc()
+            flash("Failed to update profile.", "error")
+        return redirect("/admin/profile")
+
+    try:
+        admin = db.fetchone("SELECT * FROM users WHERE email = %s", (email,))
+        total_bookings = db.fetchone("SELECT COUNT(*) AS c FROM bookings")["c"]
+        total_users = db.fetchone("SELECT COUNT(*) AS c FROM users")["c"]
+        total_rooms = db.fetchone("SELECT COUNT(*) AS c FROM rooms")["c"]
+        total_messages = db.fetchone("SELECT COUNT(*) AS c FROM messages")["c"]
+        pending_cancel = db.fetchone("SELECT COUNT(*) AS c FROM bookings WHERE cancel_status = 'Pending Cancellation'")["c"]
+        revenue_row = db.fetchone("SELECT COALESCE(SUM(amount), 0) AS r FROM payments WHERE payment_status = 'Paid'")
+        total_revenue = revenue_row["r"] if revenue_row else 0
+    except Exception:
+        traceback.print_exc()
+        admin = {"full_name": "", "phone": "", "email": email, "role": "admin", "created_at": None}
+        total_bookings = total_users = total_rooms = total_messages = pending_cancel = total_revenue = 0
+
+    return render_template(
+        "admin_profile.html",
+        admin=admin,
+        total_bookings=total_bookings,
+        total_users=total_users,
+        total_rooms=total_rooms,
+        total_messages=total_messages,
+        pending_cancel=pending_cancel,
+        total_revenue=total_revenue,
+    )
+
+
+@app.route("/admin/bookings")
+def admin_bookings():
+    guard = admin_required()
+    if guard:
+        return guard
+    try:
+        bookings = db.fetchall(
+            """
+            SELECT b.*, r.name AS room_name,
+                   p.id AS payment_id, p.amount, p.payment_status AS pay_status, p.payment_method, p.reference_number
+            FROM bookings b
+            JOIN rooms r ON b.room_id = r.id
+            LEFT JOIN payments p ON p.booking_id = b.id
+            ORDER BY b.created_at DESC
+            """
+        )
+    except Exception:
+        traceback.print_exc()
+        bookings = []
+    return render_template("admin_bookings.html", bookings=bookings)
+
+
+@app.route("/admin/payments")
+def admin_payments():
+    guard = admin_required()
+    if guard:
+        return guard
+    try:
+        payments = db.fetchall(
+            """
+            SELECT p.*, r.name AS room_name
+            FROM payments p
+            JOIN bookings b ON p.booking_id = b.id
+            JOIN rooms r ON b.room_id = r.id
+            ORDER BY p.paid_at DESC NULLS LAST
+            """
+        )
+    except Exception:
+        traceback.print_exc()
+        payments = []
+    return render_template("admin_payments.html", payments=payments)
+
+
+@app.route("/admin/rooms", methods=["GET", "POST"])
+def admin_rooms():
+    guard = admin_required()
+    if guard:
+        return guard
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        price = request.form.get("price", "0").strip()
+        description = request.form.get("description", "").strip()
+        image = request.form.get("image", "").strip()
+        category = request.form.get("category", "Standard")
+        if name:
+            try:
+                db.execute(
+                    "INSERT INTO rooms (name, price, description, image, category) VALUES (%s, %s, %s, %s, %s)",
+                    (name, price, description, image, category)
+                )
+                flash("Room added.", "success")
+            except Exception:
+                traceback.print_exc()
+                flash("Failed to add room.", "error")
+        return redirect("/admin/rooms")
+    try:
+        room_list = db.fetchall("SELECT * FROM rooms ORDER BY id DESC")
+    except Exception:
+        traceback.print_exc()
+        room_list = []
+    return render_template("admin_rooms.html", rooms=room_list)
+
+
+@app.route("/admin/rooms/delete/<int:room_id>", methods=["POST"])
+def admin_delete_room(room_id):
+    guard = admin_required()
+    if guard:
+        return guard
+    try:
+        db.execute("DELETE FROM rooms WHERE id = %s", (room_id,))
+        flash("Room deleted.", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Failed to delete room.", "error")
+    return redirect("/admin/rooms")
+
+
+@app.route("/admin/rooms/toggle/<int:room_id>", methods=["POST"])
+def admin_toggle_room(room_id):
+    guard = admin_required()
+    if guard:
+        return guard
+    try:
+        db.execute("UPDATE rooms SET available = NOT available WHERE id = %s", (room_id,))
+    except Exception:
+        traceback.print_exc()
+    return redirect("/admin/rooms")
+
+
+@app.route("/admin/users")
+def admin_users():
+    guard = admin_required()
+    if guard:
+        return guard
+    try:
+        users = db.fetchall("SELECT id, full_name, phone, email, role, created_at FROM users ORDER BY created_at DESC")
+    except Exception:
+        traceback.print_exc()
+        users = []
+    return render_template("admin_users.html", users=users)
+
+
+@app.route("/admin/users/delete/<user_id>", methods=["POST"])
+def admin_delete_user(user_id):
+    guard = admin_required()
+    if guard:
+        return guard
+    try:
+        db.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        flash("User deleted.", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Failed to delete user.", "error")
+    return redirect("/admin/users")
+
+
+@app.route("/admin/payments/update/<int:payment_id>", methods=["POST"])
+def admin_update_payment(payment_id):
+    guard = admin_required()
+    if guard:
+        return guard
+    status = request.form.get("status", "Pending")
+    try:
+        db.execute(
+            "UPDATE payments SET payment_status = %s, paid_at = CASE WHEN %s = 'Paid' THEN NOW() ELSE paid_at END WHERE id = %s",
+            (status, status, payment_id)
+        )
+        flash("Payment updated.", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Failed to update payment.", "error")
+    return redirect("/admin/payments")
+
+
+@app.route("/admin/bookings/confirm/<int:booking_id>", methods=["POST"])
+def admin_confirm_booking(booking_id):
+    guard = admin_required()
+    if guard:
+        return guard
+    try:
+        db.execute("UPDATE bookings SET payment_status = 'Paid' WHERE id = %s", (booking_id,))
+        db.execute("UPDATE payments SET payment_status = 'Paid', paid_at = NOW() WHERE booking_id = %s", (booking_id,))
+        flash("Booking confirmed.", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Failed to confirm booking.", "error")
+    return redirect("/admin/bookings")
+
+
+@app.route("/admin/bookings/reject/<int:booking_id>", methods=["POST"])
+def admin_reject_booking(booking_id):
+    guard = admin_required()
+    if guard:
+        return guard
+    try:
+        db.execute("UPDATE bookings SET payment_status = 'Cancelled' WHERE id = %s", (booking_id,))
+        flash("Booking rejected.", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Failed to reject booking.", "error")
+    return redirect("/admin/bookings")
+
+
+@app.route("/admin/bookings/delete/<int:booking_id>", methods=["POST"])
+def admin_delete_booking(booking_id):
+    guard = admin_required()
+    if guard:
+        return guard
+    try:
+        db.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
+        flash("Booking deleted.", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Failed to delete booking.", "error")
+    return redirect("/admin/bookings")
 
 
 # =========================
