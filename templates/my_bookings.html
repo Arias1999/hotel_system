@@ -37,9 +37,14 @@
                 {% endif %}
             </div>
 
-            <form method="POST" action="/cancel/{{ b['id'] }}" onsubmit="return confirm('Cancel this booking?')">
-                <button class="btn btn-danger btn-full" type="submit">Cancel Booking</button>
-            </form>
+            {% if b['cancel_status'] == 'Pending Cancellation' %}
+                <div style="background:rgba(201,163,78,0.08);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:10px;">
+                    <p style="font-size:12px;color:#c9a84c;">⏳ Cancellation pending admin approval</p>
+                    <p style="font-size:12px;opacity:0.5;margin-top:4px;">Reason: {{ b['cancel_reason'] }}</p>
+                </div>
+            {% else %}
+                <button class="btn btn-danger btn-full" onclick="openCancelModal({{ b['id'] }}, '{{ b['name'] }}')">Cancel Booking</button>
+            {% endif %}
         </div>
     </div>
     {% endfor %}
@@ -50,5 +55,32 @@
     <a href="/rooms" class="btn">Browse Rooms</a>
 </div>
 {% endif %}
+
+<!-- Cancel Modal -->
+<div id="cancelModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:28px;width:100%;max-width:440px;margin:auto;">
+        <h3 style="margin-bottom:6px;">Cancel Booking</h3>
+        <p id="cancelRoomName" style="opacity:0.5;font-size:13px;margin-bottom:16px;"></p>
+        <form method="POST" id="cancelForm">
+            <textarea name="reason" placeholder="Please provide a reason for cancellation..." required rows="4"
+                style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;resize:vertical;margin-bottom:14px;"></textarea>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button type="button" onclick="closeCancelModal()" class="btn btn-outline">Go Back</button>
+                <button type="submit" class="btn btn-danger">Confirm Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openCancelModal(id, name) {
+    document.getElementById('cancelModal').style.display = 'flex';
+    document.getElementById('cancelRoomName').textContent = 'Room: ' + name;
+    document.getElementById('cancelForm').action = '/cancel/' + id;
+}
+function closeCancelModal() {
+    document.getElementById('cancelModal').style.display = 'none';
+}
+</script>
 
 {% endblock %}

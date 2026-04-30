@@ -2,37 +2,51 @@
 {% block content %}
 
 <div class="rooms-header">
-    <h2>Available Rooms</h2>
-    <p>Choose from our {{ rooms|length }} carefully curated rooms</p>
+    <h2>All Rooms</h2>
+    <p>{{ rooms|length }} room(s) found</p>
 </div>
 
 <div class="filter-bar">
-    <a href="/rooms" class="filter-btn {% if active_category == 'All' %}active{% endif %}">All</a>
-    {% for cat in categories %}
-    <a href="/rooms?category={{ cat }}" class="filter-btn {% if active_category == cat %}active{% endif %}">{{ cat }}</a>
+    <a href="/rooms" class="filter-btn {% if not category %}active{% endif %}">All</a>
+    {% for cat in ['Standard', 'Suite', 'Luxury', 'Family'] %}
+    <a href="/rooms?category={{ cat }}" class="filter-btn {% if category == cat %}active{% endif %}">{{ cat }}</a>
     {% endfor %}
 </div>
 
 <div class="grid">
     {% for room in rooms %}
-    <div class="card">
+    <div class="card {% if not room['available'] %}room-unavailable{% endif %}">
         {% if room["image"] %}
             <div class="card-img-wrap">
                 <img src="{{ room['image'] }}" alt="{{ room['name'] }}">
-                <span class="badge">Available</span>
+                {% if room["available"] %}
+                    <span class="badge badge-available">Available</span>
+                {% else %}
+                    <span class="badge badge-unavailable">Unavailable</span>
+                {% endif %}
             </div>
         {% else %}
-            <div class="no-image">🛏 No Image</div>
+            <div class="no-image">🛏 No Image
+                {% if room["available"] %}
+                    <span class="badge badge-available">Available</span>
+                {% else %}
+                    <span class="badge badge-unavailable">Unavailable</span>
+                {% endif %}
+            </div>
         {% endif %}
         <div class="card-body">
             <h3>{{ room["name"] }}</h3>
             <p class="price">₱{{ "{:,.0f}".format(room["price"]) }} <span>/ night</span></p>
             <p class="desc">{{ room["description"] }}</p>
-            <a href="/book/{{ room['id'] }}" class="btn btn-full">Book Now</a>
+            {% if room["available"] %}
+                <a href="/book/{{ room['id'] }}" class="btn btn-full">Book Now</a>
+            {% else %}
+                <button class="btn btn-full" disabled style="opacity:0.4;cursor:not-allowed;">Unavailable</button>
+            {% endif %}
         </div>
     </div>
     {% else %}
-    <p>No rooms available at the moment.</p>
+    <p>No rooms found.</p>
     {% endfor %}
 </div>
 

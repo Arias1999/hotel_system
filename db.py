@@ -11,18 +11,15 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 # Get DATABASE_URL
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
-# 🔥 AUTO FIX (important)
-# removes wrong format: DATABASE_URL=postgresql://...
+# AUTO FIX: removes wrong format if DATABASE_URL=postgresql://... was stored literally
 if DATABASE_URL.startswith("DATABASE_URL="):
     DATABASE_URL = DATABASE_URL.replace("DATABASE_URL=", "", 1)
 
-# 🔍 DEBUG
 print("DB DEBUG → URL exists:", bool(DATABASE_URL))
 print("DB DEBUG → starts with:", DATABASE_URL[:40] if DATABASE_URL else "EMPTY")
 
@@ -30,6 +27,7 @@ print("DB DEBUG → starts with:", DATABASE_URL[:40] if DATABASE_URL else "EMPTY
 @contextmanager
 def get_db():
     conn = None
+
     try:
         if not DATABASE_URL:
             raise RuntimeError("DATABASE_URL is missing. Check your .env file.")
@@ -43,10 +41,11 @@ def get_db():
         yield conn
         conn.commit()
 
-    except Exception as e:
+    except Exception:
         if conn:
             conn.rollback()
-        print("DB ERROR:", str(e))
+
+        print("DB ERROR:")
         traceback.print_exc()
         raise
 

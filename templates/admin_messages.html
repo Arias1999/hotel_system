@@ -1,0 +1,46 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Messages{% endblock %}
+{% block nav_messages %}active{% endblock %}
+{% block page_title %}Messages{% endblock %}
+{% block page_subtitle %}View and reply to user messages{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <div class="card-header">
+        <h3>📩 User Messages</h3>
+        <span class="card-badge">{{ msgs|length }} total</span>
+    </div>
+    <div class="table-wrap">
+        {% for msg in msgs %}
+        <div style="padding:16px 20px;border-bottom:1px solid var(--gold-border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div>
+                    <strong style="font-size:13px;">{{ msg['user_email'] }}</strong>
+                    <span style="margin-left:10px;font-size:12px;color:var(--text-muted);">{{ msg['subject'] or '(No subject)' }}</span>
+                </div>
+                <small style="color:var(--text-muted);">{{ msg['created_at'].strftime('%b %d, %Y %I:%M %p') if msg['created_at'] else '' }}</small>
+            </div>
+            <p style="font-size:13px;color:var(--text-sub);margin-bottom:10px;">{{ msg['body'] }}</p>
+
+            {% if msg['reply'] %}
+            <div style="background:var(--gold-dim);border-left:3px solid var(--gold);padding:8px 12px;border-radius:6px;margin-bottom:10px;">
+                <small style="color:var(--text-muted);">Your reply · {{ msg['replied_at'].strftime('%b %d, %Y %I:%M %p') if msg['replied_at'] else '' }}</small>
+                <p style="font-size:12.5px;margin-top:4px;">{{ msg['reply'] }}</p>
+            </div>
+            {% endif %}
+
+            <form method="POST" action="/admin/messages/reply/{{ msg['id'] }}" style="display:flex;gap:8px;align-items:flex-end;">
+                <textarea name="reply" placeholder="{% if msg['reply'] %}Update reply...{% else %}Write a reply...{% endif %}" rows="2"
+                    class="admin-input" style="flex:1;resize:vertical;"></textarea>
+                <button type="submit" class="btn-sm btn-gold">{% if msg['reply'] %}Update{% else %}Reply{% endif %}</button>
+            </form>
+        </div>
+        {% else %}
+        <p style="padding:20px;color:var(--text-muted);">No messages yet.</p>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}

@@ -29,7 +29,19 @@ CREATE TABLE IF NOT EXISTS bookings (
     checkout       DATE NOT NULL,
     payment_method TEXT NOT NULL DEFAULT 'Cash',
     payment_status TEXT NOT NULL DEFAULT 'Pending',
+    cancel_reason  TEXT,
+    cancel_status  TEXT NOT NULL DEFAULT 'None',
     created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+    id         SERIAL PRIMARY KEY,
+    user_email TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+    subject    TEXT NOT NULL DEFAULT '',
+    body       TEXT NOT NULL,
+    reply      TEXT,
+    replied_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS payments (

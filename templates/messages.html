@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="rooms-header">
+    <h2>📩 Messages</h2>
+    <p>Send a message to the admin and view replies.</p>
+</div>
+
+<div class="card" style="margin-bottom:24px;">
+    <div class="card-body" style="padding:20px;">
+        <h3 style="margin-bottom:14px;">New Message</h3>
+        <form method="POST" action="/messages" style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;gap:10px;">
+                <input type="text" value="{{ user.email if user else '' }}" readonly class="form-input" style="flex:1;opacity:0.6;cursor:not-allowed;">
+                <input type="text" value="{{ user.phone if user else '' }}" readonly class="form-input" style="flex:1;opacity:0.6;cursor:not-allowed;">
+            </div>
+            <input type="text" name="subject" placeholder="Subject (optional)" class="form-input">
+            <textarea name="body" placeholder="Write your message..." required rows="4" class="form-input"></textarea>
+            <button type="submit" class="btn" style="align-self:flex-start;">Send Message</button>
+        </form>
+    </div>
+</div>
+
+<h3 style="margin-bottom:14px;">Your Messages</h3>
+
+{% for msg in inbox %}
+<div class="card" style="margin-bottom:14px;">
+    <div class="card-body" style="padding:16px 20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <strong>{{ msg['subject'] or '(No subject)' }}</strong>
+            <small style="opacity:0.5;">{{ msg['created_at'].strftime('%b %d, %Y %I:%M %p') if msg['created_at'] else '' }}</small>
+        </div>
+        <p style="margin-bottom:10px;">{{ msg['body'] }}</p>
+        {% if msg['reply'] %}
+        <div style="background:rgba(201,163,78,0.08);border-left:3px solid var(--accent);padding:10px 14px;border-radius:6px;">
+            <small style="opacity:0.6;">Admin replied · {{ msg['replied_at'].strftime('%b %d, %Y %I:%M %p') if msg['replied_at'] else '' }}</small>
+            <p style="margin-top:4px;">{{ msg['reply'] }}</p>
+        </div>
+        {% else %}
+        <small style="opacity:0.4;">⏳ Awaiting reply...</small>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<p style="opacity:0.5;">No messages yet.</p>
+{% endfor %}
+
+{% endblock %}
