@@ -14,14 +14,16 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Get DATABASE_URL
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
-# 🔍 DEBUG (visible in Vercel Logs on cold start)
+# 🔥 AUTO FIX (important)
+# removes wrong format: DATABASE_URL=postgresql://...
+if DATABASE_URL.startswith("DATABASE_URL="):
+    DATABASE_URL = DATABASE_URL.replace("DATABASE_URL=", "", 1)
+
+# 🔍 DEBUG
 print("DB DEBUG → URL exists:", bool(DATABASE_URL))
-print(
-    "DB DEBUG → correct user:",
-    "postgres.zyjqxnnvnpjbgmnmlxns" in DATABASE_URL
-)
 print("DB DEBUG → starts with:", DATABASE_URL[:40] if DATABASE_URL else "EMPTY")
 
 
@@ -30,10 +32,11 @@ def get_db():
     conn = None
     try:
         if not DATABASE_URL:
-            raise RuntimeError("DATABASE_URL is missing. Check Vercel Environment Variables.")
+            raise RuntimeError("DATABASE_URL is missing. Check your .env file.")
 
         conn = psycopg2.connect(
             DATABASE_URL,
+            cursor_factory=RealDictCursor,
             options="-c search_path=public"
         )
 
@@ -54,14 +57,14 @@ def get_db():
 
 def fetchone(query, params=()):
     with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with conn.cursor() as cur:
             cur.execute(query, params)
             return cur.fetchone()
 
 
 def fetchall(query, params=()):
     with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with conn.cursor() as cur:
             cur.execute(query, params)
             return cur.fetchall()
 
@@ -74,6 +77,6 @@ def execute(query, params=()):
 
 def execute_returning(query, params=()):
     with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with conn.cursor() as cur:
             cur.execute(query, params)
             return cur.fetchone()
