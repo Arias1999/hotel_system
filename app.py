@@ -1,12 +1,8 @@
-# app.py — Main Flask application for hotel_system
-# Connects to PostgreSQL (Supabase) via db.py.
-# ENV variable controls which DB URL is used (local vs production).
-
 import os
 import traceback
 from datetime import datetime
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, session, flash
+from flask import Flask, render_template, request, redirect, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 import db
 
@@ -14,48 +10,11 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "secret123")
-app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Lax",
-    SEND_FILE_MAX_AGE_DEFAULT=0,
-)
 
 
-def _migrate():
-    """Add missing columns and upsert the admin account."""
-    migrations = [
-        "ALTER TABLE public.users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'customer'",
-        "ALTER TABLE public.users ADD COLUMN IF NOT EXISTS full_name TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''",
-        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reference_number TEXT NOT NULL DEFAULT ''",
-        "UPDATE public.users SET role = 'admin' WHERE is_admin = TRUE AND role = 'customer'",
-    ]
-    for sql in migrations:
-        try:
-            db.execute(sql)
-        except Exception:
-            traceback.print_exc()
-
-    try:
-        existing = db.fetchone("SELECT id FROM public.users WHERE email = %s", ('admin@gmail.com',))
-        if existing:
-            db.execute(
-                "UPDATE public.users SET password = %s, role = 'admin', is_admin = TRUE WHERE email = %s",
-                (generate_password_hash('admin123'), 'admin@gmail.com')
-            )
-        else:
-            db.execute(
-                "INSERT INTO public.users (email, password, role, is_admin) VALUES (%s, %s, 'admin', TRUE)",
-                ('admin@gmail.com', generate_password_hash('admin123'))
-            )
-    except Exception:
-        traceback.print_exc()
-
-
-with app.app_context():
-    _migrate()
-
-
+# =========================
+# BASIC HELPERS
+# =========================
 def valid_email(email):
     return "@" in email and "." in email and len(email) >= 5
 
@@ -75,120 +34,114 @@ def admin_required():
     return None
 
 
-# ── AUTH ──────────────────────────────────────────────
+# =========================
+# 🔥 DEBUG ROUTES
+# =========================
+@app.route("/debug-db")
+def debug_db():
+    url = os.getenv("DATABASE_URL", "").strip()
 
-@app.route("/admin/register", methods=["GET", "POST"])
-def admin_register():
-    if admin_logged_in():
-        return redirect("/admin")
+    return jsonify({
+        "database_url_exists": bool(url),
+        "contains_project_user": "postgres.zyjqxnnvnpjbgmnmlxns" in url,
+        "starts_with": url[:40] if url else "EMPTY",
+    })
+
+
+@app.route("/test-db")
+def test_db():
+    try:
+        result = db.fetchone("SELECT 1 AS ok")
+        return jsonify({"status": "connected", "result": result})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+
+# =========================
+# AUTH
+# =========================
+@app.route("/register", methods=["GET", "POST"])
+def register():
     if request.method == "POST":
-        email = request.form["email"].strip().lower()
-        password = request.form["password"]
-        secret = request.form.get("admin_secret", "")
-        if secret != os.environ.get("ADMIN_SECRET", "admin123"):
-            flash("Invalid admin secret key.", "error")
-        elif not valid_email(email):
-            flash("Invalid email.", "error")
-        elif len(password) < 6:
-            flash("Password must be at least 6 characters.", "error")
-        else:
-            try:
-                existing = db.fetchone("SELECT id FROM public.users WHERE email = %s", (email,))
-                if existing:
-                    db.execute("UPDATE public.users SET is_admin = TRUE, password = %s WHERE email = %s",
-                               (generate_password_hash(password), email))
-                else:
-                    db.execute("INSERT INTO public.users (email, password, is_admin) VALUES (%s, %s, TRUE)",
-                               (email, generate_password_hash(password)))
-                flash("Admin account created! Please log in.", "success")
-                return redirect("/admin/login")
-            except Exception:
-                traceback.print_exc()
-                flash("Registration failed. Please try again.", "error")
-    return render_template("admin_register.html")
+        full_name = request.form.get("full_name")
+        phone = request.form.get("phone")
+        email = request.form.get("email")
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
 
+        if not all([full_name, phone, email, password, confirm_password]):
+            flash("All fields are required", "error")
+            return render_template("register.html")
 
-@app.route("/admin/logout")
-def admin_logout():
-    session.pop("admin", None)
-    return redirect("/login")
+        if not valid_email(email):
+            flash("Invalid email format", "error")
+            return render_template("register.html")
 
+        if password != confirm_password:
+            flash("Passwords do not match", "error")
+            return render_template("register.html")
 
-@app.route("/")
-def landing():
-    if admin_logged_in():
-        return redirect("/admin")
-    if logged_in():
-        return redirect("/home")
-    return render_template("landing.html")
+        try:
+            existing = db.fetchone(
+                "SELECT * FROM users WHERE email = %s",
+                (email,)
+            )
+
+            if existing:
+                flash("Email already exists", "error")
+                return render_template("register.html")
+
+            db.execute(
+                """
+                INSERT INTO users (full_name, phone, email, password, role)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (full_name, phone, email, generate_password_hash(password), "customer")
+            )
+
+            flash("Account created successfully!", "success")
+            return redirect("/login")
+
+        except Exception:
+            traceback.print_exc()
+            flash("Database error. Please try again.", "error")
+            return render_template("register.html")
+
+    return render_template("register.html")
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if admin_logged_in():
-        return redirect("/admin")
-    if logged_in():
-        return redirect("/home")
     if request.method == "POST":
-        email = request.form["email"].strip().lower()
-        password = request.form["password"]
-        if not email or not password:
-            flash("Email and password are required.", "error")
-            return render_template("login.html")
+        email = request.form.get("email")
+        password = request.form.get("password")
+
         try:
-            user = db.fetchone("SELECT * FROM public.users WHERE email = %s", (email,))
-            if not user:
-                flash("No account found with that email.", "error")
+            user = db.fetchone(
+                "SELECT * FROM users WHERE email = %s",
+                (email,)
+            )
+
+            if not user or not check_password_hash(user["password"], password):
+                flash("Invalid email or password", "error")
                 return render_template("login.html")
-            if not check_password_hash(user["password"], password):
-                flash("Incorrect password. Please try again.", "error")
-                return render_template("login.html")
-            role = user.get("role") or ("admin" if user.get("is_admin") else "customer")
-            if role == "admin":
+
+            if user.get("role") == "admin":
+                session.clear()
                 session["admin"] = email
                 return redirect("/admin")
+
+            session.clear()
             session["user"] = email
             return redirect("/home")
+
         except Exception:
             traceback.print_exc()
-            flash("Login failed. Please try again.", "error")
+            flash("Login failed. Try again.", "error")
+            return render_template("login.html")
+
     return render_template("login.html")
 
-
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    email = ""
-    if request.method == "POST":
-        full_name = request.form.get("full_name", "").strip()
-        phone     = request.form.get("phone", "").strip()
-        email     = request.form["email"].strip().lower()
-        password  = request.form["password"]
-        confirm_password = request.form.get("confirm_password", "")
-
-        if not full_name:
-            flash("Full name is required.", "error")
-        elif not valid_email(email):
-            flash("Please provide a valid email address.", "error")
-        elif len(password) < 6:
-            flash("Password must be at least 6 characters long.", "error")
-        elif password != confirm_password:
-            flash("Passwords do not match.", "error")
-        else:
-            try:
-                existing = db.fetchone("SELECT id FROM public.users WHERE email = %s", (email,))
-                if existing:
-                    flash("Email already registered.", "error")
-                    return render_template("register.html", email=email)
-                db.execute(
-                    "INSERT INTO public.users (full_name, phone, email, password, role) VALUES (%s, %s, %s, %s, 'customer')",
-                    (full_name, phone, email, generate_password_hash(password))
-                )
-                flash("Account created successfully. Please login.", "success")
-                return redirect("/login")
-            except Exception as e:
-                traceback.print_exc()
-                flash(f"Registration failed: {e}", "error")
-    return render_template("register.html", email=email)
 
 @app.route("/logout")
 def logout():
@@ -196,439 +149,47 @@ def logout():
     return redirect("/")
 
 
-# ── PAGES ─────────────────────────────────────────────
+# =========================
+# HOME
+# =========================
+@app.route("/")
+def landing():
+    return render_template("landing.html")
+
 
 @app.route("/home")
 def home():
-    if admin_logged_in():
-        return redirect("/admin")
     if not logged_in():
         return redirect("/")
     return render_template("index.html")
 
 
-@app.route("/rooms")
-def rooms():
-    if not logged_in():
-        return redirect("/")
-    category = request.args.get("category", "All")
-    if category == "All":
-        rooms_list = db.fetchall("SELECT * FROM rooms")
-    else:
-        rooms_list = db.fetchall("SELECT * FROM rooms WHERE category = %s", (category,))
-    categories = [r["category"] for r in db.fetchall("SELECT DISTINCT category FROM rooms")]
-    return render_template("rooms.html", rooms=rooms_list, categories=categories, active_category=category)
-
-
-@app.route("/about")
-def about():
-    return render_template("about.html")
-
-
-@app.route("/contact")
-def contact():
-    return render_template("contact.html")
-
-
-@app.route("/room/<int:room_id>")
-def room_detail(room_id):
-    if not logged_in():
-        return redirect("/register")
-    room = db.fetchone("SELECT * FROM rooms WHERE id = %s", (room_id,))
-    if not room:
-        return redirect("/rooms")
-    rooms_list = db.fetchall("SELECT * FROM rooms")
-    categories = [r["category"] for r in db.fetchall("SELECT DISTINCT category FROM rooms")]
-    return render_template("room_detail.html", room=room, rooms=rooms_list, categories=categories, active_category="All")
-
-
-@app.route("/book/<int:room_id>", methods=["GET", "POST"])
-def book(room_id):
-    if not logged_in():
-        return redirect("/")
-    room = db.fetchone("SELECT * FROM rooms WHERE id = %s", (room_id,))
-    if not room:
-        flash("Room not found.", "error")
-        return redirect("/rooms")
-
-    checkin = ""
-    checkout = ""
-    payment_method = "Cash"
-
-    if request.method == "POST":
-        checkin = request.form.get("checkin", "")
-        checkout = request.form.get("checkout", "")
-        payment_method = request.form.get("payment_method", "Cash")
-        reference_number = ""
-        if payment_method == "GCash":
-            reference_number = request.form.get("gcash_number", "").strip()
-        elif payment_method == "Maya":
-            reference_number = request.form.get("maya_number", "").strip()
-
-        if not checkin or not checkout:
-            flash("Please select both check-in and check-out dates.", "error")
-            return render_template("booking.html", room=room, checkin=checkin, checkout=checkout, payment_method=payment_method)
-
-        if checkin >= checkout:
-            flash("Check-out date must be after check-in date.", "error")
-            return render_template("booking.html", room=room, checkin=checkin, checkout=checkout, payment_method=payment_method)
-
-        valid_methods = ["Cash", "GCash", "Visa", "Mastercard", "PayPal", "Maya", "Credit Card"]
-        if payment_method not in valid_methods:
-            payment_method = "Cash"
-
-        conflict = db.fetchone(
-            "SELECT 1 FROM bookings WHERE room_id = %s AND NOT (checkout <= %s OR checkin >= %s)",
-            (room_id, checkin, checkout)
-        )
-        if conflict:
-            flash("This room is already booked for the selected dates. Please choose another date range.", "error")
-            return render_template("booking.html", room=room, checkin=checkin, checkout=checkout, payment_method=payment_method)
-
-        booking = db.execute_returning(
-            "INSERT INTO bookings (user_email, room_id, checkin, checkout, payment_method, payment_status, reference_number) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
-            (session["user"], room_id, checkin, checkout, payment_method, "Pending", reference_number)
-        )
-
-        try:
-            checkin_dt = datetime.fromisoformat(checkin)
-            checkout_dt = datetime.fromisoformat(checkout)
-            nights = max((checkout_dt - checkin_dt).days, 0)
-            amount = float(room["price"]) * nights
-        except Exception:
-            amount = 0
-
-        db.execute(
-            "INSERT INTO payments (booking_id, user_email, amount, payment_method, payment_status) VALUES (%s, %s, %s, %s, %s)",
-            (booking["id"], session["user"], amount, payment_method, "Pending")
-        )
-        flash("Booking confirmed!", "success")
-        return redirect(f"/booking-confirmation/{booking['id']}")
-
-    return render_template("booking.html", room=room, checkin=checkin, checkout=checkout, payment_method=payment_method)
-
-
-@app.route("/booking-confirmation/<int:booking_id>")
-def booking_confirmation(booking_id):
-    if not logged_in():
-        return redirect("/")
-    booking = db.fetchone(
-        """
-        SELECT bookings.id, bookings.checkin, bookings.checkout, bookings.user_email,
-               bookings.payment_method, bookings.payment_status,
-               rooms.name AS room_name, rooms.price AS room_price,
-               payments.id AS payment_id, payments.amount, payments.payment_status AS pay_status,
-               payments.payment_method AS pay_method, payments.paid_at
-        FROM bookings
-        JOIN rooms ON bookings.room_id = rooms.id
-        LEFT JOIN payments ON payments.booking_id = bookings.id
-        WHERE bookings.id = %s AND bookings.user_email = %s
-        """,
-        (booking_id, session["user"])
-    )
-    if not booking:
-        flash("Booking not found.", "error")
-        return redirect("/my-bookings")
-
-    nights = 0
-    total = 0
-    try:
-        checkin_date = datetime.fromisoformat(booking["checkin"])
-        checkout_date = datetime.fromisoformat(booking["checkout"])
-        nights = max((checkout_date - checkin_date).days, 0)
-        total = float(booking["room_price"]) * nights
-    except Exception:
-        pass
-
-    return render_template("booking_confirmation.html", booking={
-        "id": booking["id"],
-        "room_name": booking["room_name"],
-        "room_price": booking["room_price"],
-        "checkin": booking["checkin"],
-        "checkout": booking["checkout"],
-        "user_email": booking["user_email"],
-        "payment_method": booking["pay_method"] or booking["payment_method"],
-        "payment_status": booking["pay_status"] or booking["payment_status"] or "Pending",
-        "payment_id": booking["payment_id"],
-        "amount": booking["amount"] or total,
-        "paid_at": booking["paid_at"],
-        "nights": nights,
-        "total": total,
-    })
-
-
-@app.route("/my-bookings")
-def my_bookings():
-    if not logged_in():
-        return redirect("/")
-    rows = db.fetchall(
-        """
-        SELECT bookings.id, rooms.name, rooms.price, bookings.checkin, bookings.checkout,
-               bookings.payment_method, bookings.payment_status,
-               payments.id AS payment_id, payments.amount, payments.payment_status AS pay_status,
-               payments.payment_method AS pay_method, payments.paid_at
-        FROM bookings
-        JOIN rooms ON bookings.room_id = rooms.id
-        LEFT JOIN payments ON payments.booking_id = bookings.id
-        WHERE bookings.user_email = %s
-        ORDER BY bookings.checkin DESC
-        """,
-        (session["user"],)
-    )
-
-    bookings = []
-    for row in rows:
-        nights = 0
-        total = 0
-        try:
-            checkin_date = datetime.fromisoformat(row["checkin"])
-            checkout_date = datetime.fromisoformat(row["checkout"])
-            nights = max((checkout_date - checkin_date).days, 0)
-            total = float(row["price"]) * nights
-        except Exception:
-            pass
-        bookings.append({
-            "id": row["id"],
-            "name": row["name"],
-            "price": row["price"],
-            "checkin": row["checkin"],
-            "checkout": row["checkout"],
-            "payment_method": row["pay_method"] or row["payment_method"],
-            "payment_status": row["pay_status"] or row["payment_status"] or "Pending",
-            "payment_id": row["payment_id"],
-            "amount": float(row["amount"]) if row["amount"] else total,
-            "paid_at": row["paid_at"],
-            "nights": nights,
-            "total": total,
-        })
-
-    return render_template("my_bookings.html", bookings=bookings)
-
-
-@app.route("/cancel/<int:booking_id>", methods=["POST"])
-def cancel(booking_id):
-    if not logged_in():
-        return redirect("/")
-    db.execute(
-        "DELETE FROM bookings WHERE id = %s AND user_email = %s",
-        (booking_id, session["user"])
-    )
-    flash("Booking cancelled.", "success")
-    return redirect("/my-bookings")
-
-
-@app.route("/settings")
-def settings():
-    if not logged_in():
-        return redirect("/")
-    return render_template("settings.html", user_email=session["user"])
-
-
-@app.route("/profile")
-def profile():
-    if not logged_in():
-        return redirect("/")
-    user_email = session["user"]
-    booking_count = db.fetchone("SELECT COUNT(*) AS c FROM bookings WHERE user_email = %s", (user_email,))["c"]
-    room_count = db.fetchone("SELECT COUNT(*) AS c FROM rooms")["c"]
-    return render_template("profile.html", user_email=user_email, booking_count=booking_count, room_count=room_count)
-
-
-# ── ADMIN ─────────────────────────────────────────────
-
+# =========================
+# ADMIN
+# =========================
 @app.route("/admin")
 def admin_dashboard():
-    if logged_in() and not admin_logged_in():
-        return redirect("/home")
     guard = admin_required()
-    if guard: return guard
+    if guard:
+        return guard
 
-    total_users      = db.fetchone("SELECT COUNT(*) AS c FROM public.users")["c"]
-    total_rooms      = db.fetchone("SELECT COUNT(*) AS c FROM rooms")["c"]
-    total_bookings   = db.fetchone("SELECT COUNT(*) AS c FROM bookings")["c"]
-    total_revenue    = db.fetchone("SELECT COALESCE(SUM(amount),0) AS c FROM payments WHERE payment_status = 'Paid'")["c"]
-    pending_payments = db.fetchone("SELECT COUNT(*) AS c FROM payments WHERE payment_status = 'Pending'")["c"]
-    recent_bookings  = db.fetchall("""
-        SELECT bookings.id, bookings.user_email, rooms.name AS room_name,
-               bookings.checkin, bookings.checkout, bookings.payment_status
-        FROM bookings
-        JOIN rooms ON bookings.room_id = rooms.id
-        ORDER BY bookings.id DESC LIMIT 5
-    """)
-    return render_template("admin_dashboard.html",
-        total_users=total_users, total_rooms=total_rooms,
-        total_bookings=total_bookings, total_revenue=total_revenue,
-        pending_payments=pending_payments, recent_bookings=recent_bookings
+    try:
+        users = db.fetchone("SELECT COUNT(*) AS c FROM users")["c"]
+        bookings = db.fetchone("SELECT COUNT(*) AS c FROM bookings")["c"]
+    except Exception:
+        traceback.print_exc()
+        users = 0
+        bookings = 0
+
+    return render_template(
+        "admin_dashboard.html",
+        total_users=users,
+        total_bookings=bookings
     )
 
 
-@app.route("/admin/bookings")
-def admin_bookings():
-    guard = admin_required()
-    if guard: return guard
-    rows = db.fetchall("""
-        SELECT bookings.id, bookings.user_email, rooms.name AS room_name,
-               bookings.checkin, bookings.checkout,
-               bookings.payment_method, bookings.payment_status,
-               bookings.reference_number,
-               payments.amount, payments.payment_status AS pay_status
-        FROM bookings
-        JOIN rooms ON bookings.room_id = rooms.id
-        LEFT JOIN payments ON payments.booking_id = bookings.id
-        ORDER BY bookings.id DESC
-    """)
-    return render_template("admin_bookings.html", bookings=rows)
-
-
-@app.route("/admin/bookings/confirm/<booking_id>", methods=["POST"])
-def admin_confirm_booking(booking_id):
-    guard = admin_required()
-    if guard: return guard
-    try:
-        db.execute("UPDATE bookings SET payment_status = 'Paid' WHERE id = %s", (booking_id,))
-        db.execute("UPDATE payments SET payment_status = 'Paid', paid_at = NOW() WHERE booking_id = %s", (booking_id,))
-        flash("Booking confirmed.", "success")
-    except Exception:
-        traceback.print_exc()
-        flash("Failed to confirm booking.", "error")
-    return redirect("/admin/bookings")
-
-
-@app.route("/admin/bookings/reject/<booking_id>", methods=["POST"])
-def admin_reject_booking(booking_id):
-    guard = admin_required()
-    if guard: return guard
-    try:
-        db.execute("UPDATE bookings SET payment_status = 'Cancelled' WHERE id = %s", (booking_id,))
-        db.execute("UPDATE payments SET payment_status = 'Cancelled' WHERE booking_id = %s", (booking_id,))
-        flash("Booking rejected.", "success")
-    except Exception:
-        traceback.print_exc()
-        flash("Failed to reject booking.", "error")
-    return redirect("/admin/bookings")
-
-
-@app.route("/admin/bookings/delete/<booking_id>", methods=["POST"])
-def admin_delete_booking(booking_id):
-    guard = admin_required()
-    if guard: return guard
-    try:
-        db.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
-        flash("Booking deleted.", "success")
-    except Exception:
-        traceback.print_exc()
-        flash("Failed to delete booking.", "error")
-    return redirect("/admin/bookings")
-
-
-@app.route("/admin/payments")
-def admin_payments():
-    guard = admin_required()
-    if guard: return guard
-    rows = db.fetchall("""
-        SELECT payments.id, payments.booking_id, payments.user_email,
-               payments.amount, payments.payment_method, payments.payment_status, payments.paid_at,
-               rooms.name AS room_name
-        FROM payments
-        JOIN bookings ON bookings.id = payments.booking_id
-        JOIN rooms ON rooms.id = bookings.room_id
-        ORDER BY payments.id DESC
-    """)
-    return render_template("admin_payments.html", payments=rows)
-
-
-@app.route("/admin/payments/update/<payment_id>", methods=["POST"])
-def admin_update_payment(payment_id):
-    guard = admin_required()
-    if guard: return guard
-    status = request.form.get("status", "Pending")
-    if status not in ["Pending", "Paid", "Cancelled"]:
-        status = "Pending"
-    db.execute("UPDATE payments SET payment_status = %s WHERE id = %s", (status, payment_id))
-    db.execute("""
-        UPDATE bookings SET payment_status = %s
-        WHERE id = (SELECT booking_id FROM payments WHERE id = %s)
-    """, (status, payment_id))
-    flash("Payment status updated.", "success")
-    return redirect("/admin/payments")
-
-
-@app.route("/admin/rooms")
-def admin_rooms():
-    guard = admin_required()
-    if guard: return guard
-    rooms_list = db.fetchall("SELECT * FROM rooms ORDER BY id")
-    return render_template("admin_rooms.html", rooms=rooms_list)
-
-
-@app.route("/admin/rooms/add", methods=["POST"])
-def admin_add_room():
-    guard = admin_required()
-    if guard: return guard
-    name        = request.form.get("name", "").strip()
-    price       = request.form.get("price", 0)
-    description = request.form.get("description", "").strip()
-    image       = request.form.get("image", "").strip()
-    category    = request.form.get("category", "Standard").strip()
-    if name and price:
-        db.execute(
-            "INSERT INTO rooms (name, price, description, image, category) VALUES (%s, %s, %s, %s, %s)",
-            (name, float(price), description, image, category)
-        )
-        flash("Room added.", "success")
-    return redirect("/admin/rooms")
-
-
-@app.route("/admin/rooms/delete/<room_id>", methods=["POST"])
-def admin_delete_room(room_id):
-    guard = admin_required()
-    if guard: return guard
-    db.execute("DELETE FROM rooms WHERE id = %s", (room_id,))
-    flash("Room deleted.", "success")
-    return redirect("/admin/rooms")
-
-
-@app.route("/admin/users")
-def admin_users():
-    guard = admin_required()
-    if guard: return guard
-    users = db.fetchall("""
-        SELECT u.id, u.email,
-               COALESCE(u.role, CASE WHEN u.is_admin THEN 'admin' ELSE 'customer' END) AS role,
-               COUNT(bookings.id) AS booking_count
-        FROM public.users u
-        LEFT JOIN bookings ON bookings.user_email = u.email
-        GROUP BY u.id, u.email, u.role, u.is_admin
-        ORDER BY u.id
-    """)
-    return render_template("admin_users.html", users=users)
-
-
-@app.route("/admin/users/delete/<user_id>", methods=["POST"])
-def admin_delete_user(user_id):
-    guard = admin_required()
-    if guard: return guard
-    db.execute("DELETE FROM public.users WHERE id = %s", (user_id,))
-    flash("User deleted.", "success")
-    return redirect("/admin/users")
-
-
-@app.route("/admin/sql", methods=["GET", "POST"])
-def admin_sql():
-    guard = admin_required()
-    if guard: return guard
-    results, columns, error, query = [], [], None, ""
-    if request.method == "POST":
-        query = request.form.get("query", "").strip()
-        try:
-            rows = db.fetchall(query)
-            if rows:
-                columns = list(rows[0].keys())
-                results = [list(r.values()) for r in rows]
-        except Exception as e:
-            error = str(e)
-    return render_template("admin_sql.html", query=query, columns=columns, results=results, error=error)
-
-
+# =========================
+# RUN
+# =========================
 if __name__ == "__main__":
     app.run(debug=True)
