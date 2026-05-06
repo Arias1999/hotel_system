@@ -1,8 +1,3 @@
-"""
-db.py — Database helper
-Uses psycopg2 to connect to PostgreSQL using DATABASE_URL.
-"""
-
 import os
 import traceback
 from contextlib import contextmanager
@@ -15,7 +10,6 @@ load_dotenv()
 
 
 def database_url():
-    load_dotenv(override=True)
     return os.getenv("DATABASE_URL", "").strip()
 
 
@@ -27,13 +21,10 @@ def get_db():
         url = database_url()
 
         if not url:
-            raise RuntimeError(
-                "DATABASE_URL is missing. Check your .env or Vercel Environment Variables."
-            )
+            raise RuntimeError("DATABASE_URL is missing.")
 
         conn = psycopg2.connect(
             url,
-            sslmode="require",
             options="-c search_path=public"
         )
 
