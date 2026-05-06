@@ -13,14 +13,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
-# Temporary debug
-print("DATABASE_URL exists:", bool(DATABASE_URL))
-print(
-    "DATABASE_URL contains project user:",
-    "postgres.zyjqxnnvnpjbgmnmlxns" in DATABASE_URL
-)
+def database_url():
+    load_dotenv(override=True)
+    return os.getenv("DATABASE_URL", "").strip()
 
 
 @contextmanager
@@ -28,13 +24,15 @@ def get_db():
     conn = None
 
     try:
-        if not DATABASE_URL:
+        url = database_url()
+
+        if not url:
             raise RuntimeError(
                 "DATABASE_URL is missing. Check your .env or Vercel Environment Variables."
             )
 
         conn = psycopg2.connect(
-            DATABASE_URL,
+            url,
             sslmode="require",
             options="-c search_path=public"
         )
