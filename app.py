@@ -1,26 +1,35 @@
 import os
 import secrets
 import smtplib
-import ssl
 import traceback
 from datetime import datetime, timedelta, timezone
-from email.message import EmailMessage
+from email.mime.text import MIMEText
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 import db
 
+# =========================
+# LOAD ENVIRONMENT VARIABLES
+# =========================
 load_dotenv()
 
-app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "secret123")
+# =========================
+# ENV VARIABLES
+# =========================
+DATABASE_URL = os.getenv("DATABASE_URL")
+SECRET_KEY = os.getenv("SECRET_KEY")
 
-SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "").strip()
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").strip()
-SMTP_FROM_EMAIL = os.environ.get("SMTP_FROM_EMAIL", SMTP_USERNAME).strip()
-OTP_EXPIRY_MINUTES = int(os.environ.get("OTP_EXPIRY_MINUTES", "10"))
+SMTP_HOST = os.getenv("SMTP_HOST")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL")
+
+OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", 10))
+
+app = Flask(__name__)
+app.secret_key = SECRET_KEY or "secret123"
 
 
 # =========================
@@ -34,26 +43,45 @@ def generate_otp():
     return f"{secrets.randbelow(1_000_000):06d}"
 
 
-def send_otp_email(to_email, otp):
-    if not SMTP_USERNAME or not SMTP_PASSWORD or not SMTP_FROM_EMAIL:
-        raise RuntimeError(
-            "SMTP email is not configured. Set SMTP_USERNAME, SMTP_PASSWORD, and SMTP_FROM_EMAIL."
-        )
+def send_otp_email(to_email, otp_code):
+    try:
+        subject = "HotelBook OTP Verification"
 
-    message = EmailMessage()
-    message["Subject"] = "Your HotelBook OTP Code"
-    message["From"] = SMTP_FROM_EMAIL
-    message["To"] = to_email
-    message.set_content(
-        f"Your HotelBook verification code is {otp}.\n\n"
-        f"This code expires in {OTP_EXPIRY_MINUTES} minutes."
-    )
+        body = f"""
+Hello,
 
-    context = ssl.create_default_context()
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-        server.starttls(context=context)
+Your HotelBook verification code is:
+
+{otp_code}
+
+This OTP will expire in {OTP_EXPIRY_MINUTES} minutes.
+
+If you did not request this code, please ignore this email.
+
+- HotelBook Team
+"""
+
+        msg = MIMEText(body)
+        msg["Subject"] = subject
+        msg["From"] = SMTP_FROM_EMAIL
+        msg["To"] = to_email
+
+        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+        server.starttls()
         server.login(SMTP_USERNAME, SMTP_PASSWORD)
-        server.send_message(message)
+        server.sendmail(
+            SMTP_FROM_EMAIL,
+            to_email,
+            msg.as_string()
+        )
+        server.quit()
+
+        print("OTP EMAIL SENT SUCCESSFULLY")
+        return True
+
+    except Exception as e:
+        print("EMAIL ERROR:", str(e))
+        return False
 
 
 def save_pending_registration(full_name, phone, email, password_hash):
@@ -68,7 +96,9 @@ def save_pending_registration(full_name, phone, email, password_hash):
             datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRY_MINUTES)
         ).isoformat(),
     }
-    send_otp_email(email, otp)
+    if not send_otp_email(email, otp):
+        session.pop("pending_registration", None)
+        raise RuntimeError("OTP email failed to send.")
 
 
 def logged_in():
