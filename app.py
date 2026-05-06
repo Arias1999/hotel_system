@@ -44,6 +44,10 @@ def generate_otp():
 
 
 def send_otp_email(to_email, otp_code):
+    if not all([SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM_EMAIL]):
+        print("EMAIL ERROR: Missing SMTP environment variables")
+        return False
+
     try:
         subject = "HotelBook OTP Verification"
 
@@ -99,6 +103,13 @@ def save_pending_registration(full_name, phone, email, password_hash):
     if not send_otp_email(email, otp):
         session.pop("pending_registration", None)
         raise RuntimeError("OTP email failed to send.")
+
+
+def email_error_message():
+    return (
+        "Could not send OTP. Please restart the Flask server and check your Gmail SMTP "
+        "settings in .env."
+    )
 
 
 def logged_in():
@@ -167,11 +178,16 @@ def register():
                 "SELECT * FROM users WHERE email = %s",
                 (email,)
             )
+        except Exception:
+            traceback.print_exc()
+            flash("Database error while checking your email. Please try again.", "error")
+            return render_template("register.html")
 
-            if existing:
-                flash("Email already exists", "error")
-                return render_template("register.html")
+        if existing:
+            flash("Email already exists", "error")
+            return render_template("register.html")
 
+        try:
             save_pending_registration(
                 full_name,
                 phone,
@@ -183,7 +199,7 @@ def register():
 
         except Exception:
             traceback.print_exc()
-            flash("Could not send OTP. Please check your Gmail app password settings.", "error")
+            flash(email_error_message(), "error")
             return render_template("register.html")
 
     return render_template("register.html")
@@ -250,7 +266,7 @@ def resend_registration_otp():
         flash("A new OTP code was sent.", "success")
     except Exception:
         traceback.print_exc()
-        flash("Could not resend OTP. Please check your Gmail app password settings.", "error")
+        flash(email_error_message(), "error")
 
     return redirect("/verify-registration")
 
