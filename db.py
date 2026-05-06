@@ -11,39 +11,42 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
-# 🔍 DEBUG (visible in Vercel Logs on cold start)
-print("DB DEBUG → URL exists:", bool(DATABASE_URL))
+# Temporary debug
+print("DATABASE_URL exists:", bool(DATABASE_URL))
 print(
-    "DB DEBUG → correct user:",
+    "DATABASE_URL contains project user:",
     "postgres.zyjqxnnvnpjbgmnmlxns" in DATABASE_URL
 )
-print("DB DEBUG → starts with:", DATABASE_URL[:40] if DATABASE_URL else "EMPTY")
 
 
 @contextmanager
 def get_db():
     conn = None
+
     try:
         if not DATABASE_URL:
-            raise RuntimeError("DATABASE_URL is missing. Check Vercel Environment Variables.")
+            raise RuntimeError(
+                "DATABASE_URL is missing. Check your .env or Vercel Environment Variables."
+            )
 
         conn = psycopg2.connect(
             DATABASE_URL,
+            sslmode="require",
             options="-c search_path=public"
         )
 
         yield conn
         conn.commit()
 
-    except Exception as e:
+    except Exception:
         if conn:
             conn.rollback()
-        print("DB ERROR:", str(e))
+
+        print("DB ERROR:")
         traceback.print_exc()
         raise
 
