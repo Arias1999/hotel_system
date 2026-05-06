@@ -1,5 +1,10 @@
 import os
+import secrets
+import smtplib
+import ssl
 import traceback
+from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -10,12 +15,60 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "secret123")
 
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "").strip()
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").strip()
+SMTP_FROM_EMAIL = os.environ.get("SMTP_FROM_EMAIL", SMTP_USERNAME).strip()
+OTP_EXPIRY_MINUTES = int(os.environ.get("OTP_EXPIRY_MINUTES", "10"))
+
 
 # =========================
 # BASIC HELPERS
 # =========================
 def valid_email(email):
     return email and "@" in email and "." in email and len(email) >= 5
+
+
+def generate_otp():
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def send_otp_email(to_email, otp):
+    if not SMTP_USERNAME or not SMTP_PASSWORD or not SMTP_FROM_EMAIL:
+        raise RuntimeError(
+            "SMTP email is not configured. Set SMTP_USERNAME, SMTP_PASSWORD, and SMTP_FROM_EMAIL."
+        )
+
+    message = EmailMessage()
+    message["Subject"] = "Your HotelBook OTP Code"
+    message["From"] = SMTP_FROM_EMAIL
+    message["To"] = to_email
+    message.set_content(
+        f"Your HotelBook verification code is {otp}.\n\n"
+        f"This code expires in {OTP_EXPIRY_MINUTES} minutes."
+    )
+
+    context = ssl.create_default_context()
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        server.starttls(context=context)
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.send_message(message)
+
+
+def save_pending_registration(full_name, phone, email, password_hash):
+    otp = generate_otp()
+    session["pending_registration"] = {
+        "full_name": full_name,
+        "phone": phone,
+        "email": email,
+        "password_hash": password_hash,
+        "otp": otp,
+        "expires_at": (
+            datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRY_MINUTES)
+        ).isoformat(),
+    }
+    send_otp_email(email, otp)
 
 
 def logged_in():
@@ -62,12 +115,12 @@ def test_db():
 def register():
     if request.method == "POST":
         full_name = request.form.get("full_name")
-        phone = request.form.get("phone")
+        phone = request.form.get("phone", "")
         email = request.form.get("email")
         password = request.form.get("password")
         confirm_password = request.form.get("confirm_password")
 
-        if not all([full_name, phone, email, password, confirm_password]):
+        if not all([full_name, email, password, confirm_password]):
             flash("All fields are required", "error")
             return render_template("register.html")
 
@@ -89,23 +142,87 @@ def register():
                 flash("Email already exists", "error")
                 return render_template("register.html")
 
+            save_pending_registration(
+                full_name,
+                phone,
+                email,
+                generate_password_hash(password),
+            )
+            flash("We sent an OTP code to your Gmail. Please verify your account.", "success")
+            return redirect("/verify-registration")
+
+        except Exception:
+            traceback.print_exc()
+            flash("Could not send OTP. Please check your Gmail app password settings.", "error")
+            return render_template("register.html")
+
+    return render_template("register.html")
+
+
+@app.route("/verify-registration", methods=["GET", "POST"])
+def verify_registration():
+    pending = session.get("pending_registration")
+    if not pending:
+        flash("Please register first.", "error")
+        return redirect("/register")
+
+    if request.method == "POST":
+        otp = request.form.get("otp", "").strip()
+        expires_at = datetime.fromisoformat(pending["expires_at"])
+
+        if datetime.now(timezone.utc) > expires_at:
+            session.pop("pending_registration", None)
+            flash("OTP expired. Please register again.", "error")
+            return redirect("/register")
+
+        if otp != pending["otp"]:
+            flash("Invalid OTP code.", "error")
+            return render_template("verify_otp.html", email=pending["email"])
+
+        try:
             db.execute(
                 """
                 INSERT INTO users (full_name, phone, email, password, role)
                 VALUES (%s, %s, %s, %s, %s)
                 """,
-                (full_name, phone, email, generate_password_hash(password), "customer")
+                (
+                    pending["full_name"],
+                    pending["phone"],
+                    pending["email"],
+                    pending["password_hash"],
+                    "customer",
+                )
             )
-
-            flash("Account created successfully!", "success")
+            session.pop("pending_registration", None)
+            flash("Account verified and created successfully!", "success")
             return redirect("/login")
-
         except Exception:
             traceback.print_exc()
             flash("Database error. Please try again.", "error")
-            return render_template("register.html")
 
-    return render_template("register.html")
+    return render_template("verify_otp.html", email=pending["email"])
+
+
+@app.route("/resend-registration-otp", methods=["POST"])
+def resend_registration_otp():
+    pending = session.get("pending_registration")
+    if not pending:
+        flash("Please register first.", "error")
+        return redirect("/register")
+
+    try:
+        save_pending_registration(
+            pending["full_name"],
+            pending["phone"],
+            pending["email"],
+            pending["password_hash"],
+        )
+        flash("A new OTP code was sent.", "success")
+    except Exception:
+        traceback.print_exc()
+        flash("Could not resend OTP. Please check your Gmail app password settings.", "error")
+
+    return redirect("/verify-registration")
 
 
 @app.route("/login", methods=["GET", "POST"])

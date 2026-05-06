@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify OTP - HotelBook</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="auth-page">
+    <div class="auth-box">
+        <div class="auth-brand">
+            <span class="brand-mark">HB</span>
+            <div>
+                <h2>HotelBook</h2>
+                <p>Check your email for the verification code.</p>
+            </div>
+        </div>
+
+        <div class="auth-intro">
+            <h3>Verify OTP</h3>
+            <p>Enter the six-digit code sent to {{ email }}.</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-wrapper">
+                    {% for category, msg in messages %}
+                        <div class="flash flash-{{ category }}">{{ msg }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="auth-form">
+            <label>
+                OTP code
+                <input type="text" name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="123456" required autofocus>
+            </label>
+            <button class="btn btn-full" type="submit">Verify Account</button>
+        </form>
+
+        <form method="POST" action="/resend-registration-otp" class="auth-form">
+            <button class="btn btn-full" type="submit">Resend OTP</button>
+        </form>
+
+        <p class="auth-link"><a href="/register">Use another email</a></p>
+    </div>
+</body>
+</html>
