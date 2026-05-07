@@ -11,26 +11,19 @@
 <div class="categories-section">
     <h2>Browse by Category</h2>
     <div class="category-grid">
-        <a href="{{ url_for('rooms', category='Standard') }}" class="category-card">
-            <span class="cat-icon">🛏</span>
-            <span class="cat-name">Standard</span>
-            <span class="cat-desc">Comfortable & affordable</span>
+        {% for cat in categories %}
+        <a href="{{ url_for('rooms', category=cat.category) }}" class="category-card">
+            <span class="cat-icon">
+                {% if cat.category == 'Standard' %}🛏
+                {% elif cat.category == 'Suite' %}🌊
+                {% elif cat.category == 'Luxury' %}✨
+                {% elif cat.category == 'Family' %}👨‍👩‍👧
+                {% else %}🏨{% endif %}
+            </span>
+            <span class="cat-name">{{ cat.category }}</span>
+            <span class="cat-desc">{{ cat.room_count }} room{{ 's' if cat.room_count != 1 else '' }} available</span>
         </a>
-        <a href="{{ url_for('rooms', category='Suite') }}" class="category-card">
-            <span class="cat-icon">🌊</span>
-            <span class="cat-name">Suite</span>
-            <span class="cat-desc">Spacious & premium</span>
-        </a>
-        <a href="{{ url_for('rooms', category='Luxury') }}" class="category-card">
-            <span class="cat-icon">✨</span>
-            <span class="cat-name">Luxury</span>
-            <span class="cat-desc">Top-tier experience</span>
-        </a>
-        <a href="{{ url_for('rooms', category='Family') }}" class="category-card">
-            <span class="cat-icon">👨‍👩‍👧</span>
-            <span class="cat-name">Family</span>
-            <span class="cat-desc">Perfect for families</span>
-        </a>
+        {% endfor %}
     </div>
 </div>
 

@@ -166,6 +166,28 @@ def count_value(query, params=()):
     return row.get("c") or 0
 
 
+def room_categories():
+    fallback = ["Standard", "Suite", "Luxury", "Family"]
+
+    try:
+        db.ensure_app_schema()
+        rows = db.fetchall(
+            """
+            SELECT category, COUNT(*) AS room_count
+            FROM rooms
+            WHERE COALESCE(category, '') <> ''
+            GROUP BY category
+            ORDER BY category ASC
+            """
+        )
+        if rows:
+            return rows
+    except Exception as e:
+        log_error("ROOM CATEGORIES", e)
+
+    return [{"category": category, "room_count": 0} for category in fallback]
+
+
 @app.errorhandler(Exception)
 def handle_unexpected_error(error):
     if isinstance(error, HTTPException):
@@ -408,14 +430,14 @@ def logout():
 # =========================
 @app.route("/")
 def landing():
-    return render_template("landing.html")
+    return render_template("landing.html", categories=room_categories())
 
 
 @app.route("/home")
 def home():
     if not logged_in():
         return redirect("/login")
-    return render_template("index.html")
+    return render_template("index.html", categories=room_categories())
 
 
 @app.route("/about")
@@ -574,13 +596,28 @@ def rooms():
     if not logged_in():
         return redirect("/login")
 
+    active_category = request.args.get("category", "All").strip() or "All"
+    categories = room_categories()
+
     try:
-        rooms = db.fetchall("SELECT * FROM rooms ORDER BY id ASC")
-    except Exception:
-        traceback.print_exc()
+        if active_category == "All":
+            rooms = db.fetchall("SELECT * FROM rooms ORDER BY id ASC")
+        else:
+            rooms = db.fetchall(
+                "SELECT * FROM rooms WHERE category = %s ORDER BY id ASC",
+                (active_category,)
+            )
+    except Exception as e:
+        log_error("ROOM LIST", e)
+        flash(f"Could not load rooms: {e}", "error")
         rooms = []
 
-    return render_template("rooms.html", rooms=rooms)
+    return render_template(
+        "rooms.html",
+        rooms=rooms,
+        categories=[row["category"] for row in categories],
+        active_category=active_category
+    )
 
 
 # =========================
