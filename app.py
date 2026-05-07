@@ -18,7 +18,6 @@ load_dotenv()
 # =========================
 # ENV VARIABLES
 # =========================
-DATABASE_URL = os.getenv("DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 SMTP_HOST = os.getenv("SMTP_HOST")
@@ -132,10 +131,14 @@ def admin_logged_in():
     return "admin" in session
 
 
+def is_admin_user(user):
+    return bool(user and (user.get("role") == "admin" or user.get("is_admin")))
+
+
 def admin_required():
     if not admin_logged_in():
         flash("Please log in to access the admin panel.", "error")
-        return redirect("/login")
+        return redirect("/admin/login")
     return None
 
 
@@ -144,12 +147,19 @@ def admin_required():
 # =========================
 @app.route("/debug-db")
 def debug_db():
-    url = os.getenv("DATABASE_URL", "").strip()
-    return jsonify({
-        "database_url_exists": bool(url),
-        "contains_project_user": "postgres.zyjqxnnvnpjbgmnmlxns" in url,
-        "starts_with": url[:40] if url else "EMPTY",
-    })
+    try:
+        parsed = db.url_info()
+        return jsonify({
+            "database_url_exists": True,
+            "host": parsed["host"],
+            "port": parsed["port"],
+            "username": parsed["username"],
+            "direct_connection": parsed["direct_connection"],
+            "sslmode": parsed["sslmode"],
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/test-db")
@@ -307,7 +317,7 @@ def login():
 
             session.clear()
 
-            if user.get("role") == "admin":
+            if is_admin_user(user):
                 session["admin"] = email
                 return redirect("/admin")
 
@@ -320,6 +330,38 @@ def login():
             return render_template("login.html")
 
     return render_template("login.html")
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        try:
+            user = db.fetchone(
+                "SELECT * FROM users WHERE email = %s",
+                (email,)
+            )
+
+            if not user or not check_password_hash(user["password"], password):
+                flash("Invalid email or password", "error")
+                return render_template("admin_login.html")
+
+            if not is_admin_user(user):
+                flash("This account is not an admin account.", "error")
+                return render_template("admin_login.html")
+
+            session.clear()
+            session["admin"] = email
+            return redirect("/admin")
+
+        except Exception:
+            traceback.print_exc()
+            flash("Admin login failed. Try again.", "error")
+            return render_template("admin_login.html")
+
+    return render_template("admin_login.html")
 
 
 @app.route("/logout")
