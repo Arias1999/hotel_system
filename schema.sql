@@ -22,22 +22,24 @@ CREATE TABLE IF NOT EXISTS rooms (
 );
 
 CREATE TABLE IF NOT EXISTS bookings (
-    id             SERIAL PRIMARY KEY,
-    user_email     TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
-    room_id        INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-    checkin        DATE NOT NULL,
-    checkout       DATE NOT NULL,
-    payment_method TEXT NOT NULL DEFAULT 'Cash',
-    payment_status TEXT NOT NULL DEFAULT 'Pending',
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id               SERIAL PRIMARY KEY,
+    user_email       TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+    room_id          INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    checkin          DATE NOT NULL,
+    checkout         DATE NOT NULL,
+    payment_method   TEXT NOT NULL DEFAULT 'Cash',
+    payment_status   TEXT NOT NULL DEFAULT 'Pending',
+    reference_number TEXT,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS payments (
-    id             SERIAL PRIMARY KEY,
-    booking_id     INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
-    user_email     TEXT NOT NULL,
-    amount         NUMERIC(10, 2) NOT NULL DEFAULT 0,
-    payment_method TEXT NOT NULL DEFAULT 'Cash',
-    payment_status TEXT NOT NULL DEFAULT 'Pending',
-    paid_at        TIMESTAMPTZ
+    id               SERIAL PRIMARY KEY,
+    booking_id       INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+    user_email       TEXT NOT NULL,
+    amount           NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    payment_method   TEXT NOT NULL DEFAULT 'Cash',
+    payment_status   TEXT NOT NULL DEFAULT 'Pending',
+    reference_number TEXT,
+    paid_at          TIMESTAMPTZ
 );

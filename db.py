@@ -33,6 +33,87 @@ ALTER TABLE users
 """
 
 
+APP_SCHEMA_SQL = """
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+CREATE TABLE IF NOT EXISTS users (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    full_name  TEXT NOT NULL DEFAULT '',
+    phone      TEXT NOT NULL DEFAULT '',
+    email      TEXT UNIQUE NOT NULL,
+    password   TEXT NOT NULL,
+    is_admin   BOOLEAN NOT NULL DEFAULT FALSE,
+    role       TEXT NOT NULL DEFAULT 'customer',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS full_name TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'customer',
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+CREATE TABLE IF NOT EXISTS rooms (
+    id          SERIAL PRIMARY KEY,
+    name        TEXT NOT NULL,
+    price       NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    description TEXT,
+    image       TEXT,
+    category    TEXT NOT NULL DEFAULT 'Standard'
+);
+
+ALTER TABLE rooms
+    ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS price NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS description TEXT,
+    ADD COLUMN IF NOT EXISTS image TEXT,
+    ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'Standard';
+
+CREATE TABLE IF NOT EXISTS bookings (
+    id               SERIAL PRIMARY KEY,
+    user_email       TEXT NOT NULL,
+    room_id          INTEGER,
+    checkin          DATE NOT NULL DEFAULT CURRENT_DATE,
+    checkout         DATE NOT NULL DEFAULT CURRENT_DATE,
+    payment_method   TEXT NOT NULL DEFAULT 'Cash',
+    payment_status   TEXT NOT NULL DEFAULT 'Pending',
+    reference_number TEXT,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE bookings
+    ADD COLUMN IF NOT EXISTS user_email TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS room_id INTEGER,
+    ADD COLUMN IF NOT EXISTS checkin DATE NOT NULL DEFAULT CURRENT_DATE,
+    ADD COLUMN IF NOT EXISTS checkout DATE NOT NULL DEFAULT CURRENT_DATE,
+    ADD COLUMN IF NOT EXISTS payment_method TEXT NOT NULL DEFAULT 'Cash',
+    ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'Pending',
+    ADD COLUMN IF NOT EXISTS reference_number TEXT,
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+CREATE TABLE IF NOT EXISTS payments (
+    id               SERIAL PRIMARY KEY,
+    booking_id       INTEGER,
+    user_email       TEXT NOT NULL DEFAULT '',
+    amount           NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    payment_method   TEXT NOT NULL DEFAULT 'Cash',
+    payment_status   TEXT NOT NULL DEFAULT 'Pending',
+    reference_number TEXT,
+    paid_at          TIMESTAMPTZ
+);
+
+ALTER TABLE payments
+    ADD COLUMN IF NOT EXISTS booking_id INTEGER,
+    ADD COLUMN IF NOT EXISTS user_email TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS amount NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS payment_method TEXT NOT NULL DEFAULT 'Cash',
+    ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'Pending',
+    ADD COLUMN IF NOT EXISTS reference_number TEXT,
+    ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+"""
+
+
 def database_url():
     load_dotenv(override=True)
     raw_url = os.getenv("DATABASE_URL", "").strip()
@@ -140,6 +221,13 @@ def ensure_users_table():
         with conn.cursor() as cur:
             cur.execute(USERS_TABLE_SQL)
     print("USERS TABLE READY")
+
+
+def ensure_app_schema():
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(APP_SCHEMA_SQL)
+    print("APP DATABASE TABLES READY")
 
 
 def fetchone(query, params=()):
