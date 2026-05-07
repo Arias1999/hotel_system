@@ -103,11 +103,11 @@
 
         <div class="contact-form-wrap">
             <h2>Send Us a Message</h2>
-            <form>
-                <input type="text" placeholder="Your Name" required>
-                <input type="email" placeholder="Your Email" required>
-                <input type="text" placeholder="Subject">
-                <textarea placeholder="Your message..."></textarea>
+            <form method="POST" action="/contact">
+                <input type="text" name="name" placeholder="Your Name" required>
+                <input type="email" name="email" placeholder="Your Email" required>
+                <input type="text" name="subject" placeholder="Subject">
+                <textarea name="message" placeholder="Your message..." required></textarea>
                 <button class="btn" type="submit">Send Message</button>
             </form>
         </div>

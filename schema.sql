@@ -43,3 +43,13 @@ CREATE TABLE IF NOT EXISTS payments (
     reference_number TEXT,
     paid_at          TIMESTAMPTZ
 );
+
+CREATE TABLE IF NOT EXISTS contact_messages (
+    id         SERIAL PRIMARY KEY,
+    name       TEXT NOT NULL DEFAULT '',
+    email      TEXT NOT NULL DEFAULT '',
+    subject    TEXT NOT NULL DEFAULT '',
+    message    TEXT NOT NULL DEFAULT '',
+    is_read    BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

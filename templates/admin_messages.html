@@ -1,0 +1,62 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Messages{% endblock %}
+{% block nav_messages %}active{% endblock %}
+{% block page_title %}Messages{% endblock %}
+{% block page_subtitle %}Customer messages from the contact page{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>Customer Messages</h3>
+        <span class="card-badge">{{ messages|length }} total</span>
+    </div>
+    <div class="table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Subject</th>
+                    <th>Message</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in messages %}
+                <tr>
+                    <td>#{{ m.id }}</td>
+                    <td>{{ m.name }}</td>
+                    <td>{{ m.email }}</td>
+                    <td>{{ m.subject or 'No subject' }}</td>
+                    <td style="white-space:normal;max-width:320px;">{{ m.message }}</td>
+                    <td>{{ m.created_at.strftime('%b %d, %Y') if m.created_at else '—' }}</td>
+                    <td>
+                        {% if m.is_read %}
+                            <span class="badge badge-paid">Read</span>
+                        {% else %}
+                            <span class="badge badge-pending">New</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-actions">
+                            {% if not m.is_read %}
+                            <form method="POST" action="/admin/messages/read/{{ m.id }}">
+                                <button class="btn-sm btn-gold" type="submit">Mark Read</button>
+                            </form>
+                            {% endif %}
+                            <form method="POST" action="/admin/messages/delete/{{ m.id }}" onsubmit="return confirm('Delete this message?')">
+                                <button class="btn-sm btn-danger" type="submit">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

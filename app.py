@@ -426,7 +426,29 @@ def about():
 @app.route("/contact", methods=["GET", "POST"])
 def contact():
     if request.method == "POST":
-        flash("Thanks for your message. We will get back to you soon.", "success")
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip()
+        subject = request.form.get("subject", "").strip()
+        message = request.form.get("message", "").strip()
+
+        if not name or not valid_email(email) or not message:
+            flash("Please enter your name, valid email, and message.", "error")
+            return render_template("contact.html")
+
+        try:
+            db.ensure_app_schema()
+            db.execute(
+                """
+                INSERT INTO contact_messages (name, email, subject, message)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (name, email, subject, message)
+            )
+            flash("Thanks for your message. We will get back to you soon.", "success")
+        except Exception as e:
+            log_error("CONTACT MESSAGE", e)
+            flash(f"Could not send your message right now: {e}", "error")
+
     return render_template("contact.html")
 
 
@@ -925,6 +947,67 @@ def admin_delete_user(user_id):
         flash(f"Could not delete user: {e}", "error")
 
     return redirect("/admin/users")
+
+
+@app.route("/admin/messages")
+def admin_messages():
+    guard = admin_required()
+    if guard:
+        return guard
+
+    ensure_admin_database()
+    messages = []
+
+    try:
+        messages = db.fetchall(
+            """
+            SELECT id, name, email, subject, message, is_read, created_at
+            FROM contact_messages
+            ORDER BY is_read ASC, created_at DESC NULLS LAST, id DESC
+            """
+        )
+    except Exception as e:
+        log_error("ADMIN MESSAGES", e)
+        flash(f"Could not load messages: {e}", "error")
+
+    return render_template("admin_messages.html", messages=messages)
+
+
+@app.route("/admin/messages/read/<int:message_id>", methods=["POST"])
+def admin_mark_message_read(message_id):
+    guard = admin_required()
+    if guard:
+        return guard
+
+    ensure_admin_database()
+    try:
+        db.execute(
+            "UPDATE contact_messages SET is_read = TRUE WHERE id = %s",
+            (message_id,)
+        )
+        flash("Message marked as read.", "success")
+    except Exception as e:
+        log_error("ADMIN MARK MESSAGE READ", e)
+        flash(f"Could not update message: {e}", "error")
+
+    return redirect("/admin/messages")
+
+
+@app.route("/admin/messages/delete/<int:message_id>", methods=["POST"])
+def admin_delete_message(message_id):
+    guard = admin_required()
+    if guard:
+        return guard
+
+    ensure_admin_database()
+    try:
+        db.execute("DELETE FROM contact_messages WHERE id = %s", (message_id,))
+        flash("Message deleted.", "success")
+    except Exception as e:
+        log_error("ADMIN DELETE MESSAGE", e)
+        flash(f"Could not delete message: {e}", "error")
+
+    return redirect("/admin/messages")
 
 
 # =========================
