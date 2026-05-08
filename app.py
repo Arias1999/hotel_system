@@ -40,6 +40,10 @@ def valid_email(email):
     return email and "@" in email and "." in email and len(email) >= 5
 
 
+def normalize_email(email):
+    return (email or "").strip().lower()
+
+
 def generate_otp():
     return f"{secrets.randbelow(1_000_000):06d}"
 
@@ -234,7 +238,7 @@ def register():
     if request.method == "POST":
         full_name = request.form.get("full_name")
         phone = request.form.get("phone", "")
-        email = request.form.get("email")
+        email = normalize_email(request.form.get("email"))
         password = request.form.get("password")
         confirm_password = request.form.get("confirm_password")
 
@@ -307,10 +311,12 @@ def verify_registration():
 
         try:
             db.ensure_users_table()
-            db.execute(
+            inserted = db.execute_returning(
                 """
                 INSERT INTO users (full_name, phone, email, password, role)
                 VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (email) DO NOTHING
+                RETURNING id
                 """,
                 (
                     pending["full_name"],
@@ -320,8 +326,13 @@ def verify_registration():
                     "customer",
                 )
             )
-            print("USER INSERTED")
             session.pop("pending_registration", None)
+
+            if not inserted:
+                flash("Email already exists. Please log in instead.", "error")
+                return redirect("/login")
+
+            print("USER INSERTED")
             flash("Account verified and created successfully!", "success")
             return redirect("/login")
         except Exception as e:
@@ -357,7 +368,7 @@ def resend_registration_otp():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form.get("email")
+        email = normalize_email(request.form.get("email"))
         password = request.form.get("password")
 
         try:
@@ -390,7 +401,7 @@ def login():
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
     if request.method == "POST":
-        email = request.form.get("email")
+        email = normalize_email(request.form.get("email"))
         password = request.form.get("password")
 
         try:
@@ -617,6 +628,154 @@ def rooms():
         rooms=rooms,
         categories=[row["category"] for row in categories],
         active_category=active_category
+    )
+
+
+@app.route("/room/<int:room_id>")
+def room_detail(room_id):
+    if not logged_in():
+        return redirect("/login")
+
+    try:
+        db.ensure_app_schema()
+        room = db.fetchone("SELECT * FROM rooms WHERE id = %s", (room_id,))
+        if not room:
+            flash("Room not found.", "error")
+            return redirect("/rooms")
+
+        categories = room_categories()
+        other_rooms = db.fetchall("SELECT * FROM rooms ORDER BY id ASC")
+    except Exception as e:
+        log_error("ROOM DETAIL", e)
+        flash(f"Could not load room: {e}", "error")
+        return redirect("/rooms")
+
+    return render_template(
+        "room_detail.html",
+        room=room,
+        rooms=other_rooms,
+        categories=[row["category"] for row in categories],
+        active_category=request.args.get("category", "All").strip() or "All",
+    )
+
+
+@app.route("/book/<int:room_id>", methods=["GET", "POST"])
+def book_room(room_id):
+    if not logged_in():
+        return redirect("/login")
+
+    try:
+        db.ensure_app_schema()
+        room = db.fetchone("SELECT * FROM rooms WHERE id = %s", (room_id,))
+    except Exception as e:
+        log_error("BOOK ROOM LOAD", e)
+        flash(f"Could not load booking page: {e}", "error")
+        return redirect("/rooms")
+
+    if not room:
+        flash("Room not found.", "error")
+        return redirect("/rooms")
+
+    if request.method == "POST":
+        checkin = request.form.get("checkin", "").strip()
+        checkout = request.form.get("checkout", "").strip()
+        payment_method = "Cash"
+
+        try:
+            checkin_date = datetime.strptime(checkin, "%Y-%m-%d").date()
+            checkout_date = datetime.strptime(checkout, "%Y-%m-%d").date()
+        except ValueError:
+            flash("Please choose valid check-in and check-out dates.", "error")
+            return render_template(
+                "booking.html",
+                room=room,
+                checkin=checkin,
+                checkout=checkout,
+                payment_method=payment_method,
+            )
+
+        if checkout_date <= checkin_date:
+            flash("Check-out date must be after check-in date.", "error")
+            return render_template(
+                "booking.html",
+                room=room,
+                checkin=checkin,
+                checkout=checkout,
+                payment_method=payment_method,
+            )
+
+        reference_number = ""
+
+        try:
+            nights = (checkout_date - checkin_date).days
+            amount = nights * float(room["price"] or 0)
+            booking = db.execute_returning(
+                """
+                INSERT INTO bookings (
+                    user_email, room_id, checkin, checkout,
+                    payment_method, payment_status, reference_number
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+                """,
+                (
+                    session["user"],
+                    room_id,
+                    checkin_date,
+                    checkout_date,
+                    payment_method,
+                    "Pending",
+                    reference_number,
+                ),
+            )
+
+            payment = db.execute_returning(
+                """
+                INSERT INTO payments (
+                    booking_id, user_email, amount, payment_method,
+                    payment_status, reference_number
+                )
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id
+                """,
+                (
+                    booking["id"],
+                    session["user"],
+                    amount,
+                    payment_method,
+                    "Pending",
+                    reference_number,
+                ),
+            )
+
+            confirmation = {
+                "id": booking["id"],
+                "room_name": room["name"],
+                "room_price": room["price"],
+                "user_email": session["user"],
+                "checkin": checkin_date,
+                "checkout": checkout_date,
+                "nights": nights,
+                "total": amount,
+                "payment_id": payment["id"] if payment else None,
+                "payment_method": payment_method,
+                "amount": amount,
+                "payment_status": "Pending",
+                "paid_at": None,
+            }
+
+            flash("Booking created successfully.", "success")
+            return render_template("booking_confirmation.html", booking=confirmation)
+        except Exception as e:
+            log_error("BOOK ROOM CREATE", e)
+            flash(f"Could not create booking: {e}", "error")
+
+    return render_template(
+        "booking.html",
+        room=room,
+        checkin=request.form.get("checkin", ""),
+        checkout=request.form.get("checkout", ""),
+        payment_method=request.form.get("payment_method", "Cash"),
     )
 
 
